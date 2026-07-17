@@ -1,0 +1,187 @@
+/* =========================================================
+   DESIGN TOKENS
+   Palette concept: "ink & highlighter" — a warm paper-toned
+   surface with a calm ink-blue for primary actions, a violet
+   for the Exam mode, and an amber/gold "highlighter" accent
+   for Practice mode, streaks and highlights. Numerals/timers
+   use a geometric mono face (--font-mono) for a precise,
+   instrument-like feel that fits spaced-repetition & quizzes.
+   ========================================================= */
+:root {
+  --font-body: 'Vazirmatn', 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+
+  /* Runtime-adjustable knobs (overridden by Settings > Appearance) */
+  --font-scale: 1;
+  --motion-scale: 1;
+
+  --color-primary: #2F5FA8;
+  --color-primary-soft: rgba(47, 95, 168, 0.08);
+  --color-primary-hover: #244A87;
+  --text-on-primary: #FFFFFF;
+
+  --color-secondary: #7C5CBF;
+  --color-secondary-soft: rgba(124, 92, 191, 0.1);
+
+  --color-accent: #C97C2C;
+  --color-accent-soft: rgba(201, 124, 44, 0.1);
+
+  --color-danger: #C94A3F;
+  --color-danger-soft: #FBEBE9;
+  --color-warning: #C98A2E;
+  --color-warning-soft: #FBF1E1;
+  --color-success: #2F8F5B;
+  --color-success-soft: #E7F5EC;
+
+  --bg-primary: #F6F5F0;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-sunken: #EFECE3;
+
+  --border-strong: #DEDACC;
+  --border-soft: #EDEAE0;
+  --border-subtle: #E4E0D3;
+
+  --text-primary: #221F19;
+  --text-secondary: #6C6656;
+  --text-tertiary: #9A937E;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-btn: 12px;
+  --radius-card: 18px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+
+  --text-caption: calc(12px * var(--font-scale));
+  --text-body: calc(15px * var(--font-scale));
+  --text-section: calc(18px * var(--font-scale));
+  --text-title: calc(24px * var(--font-scale));
+
+  --shadow-sm: 0 1px 3px rgba(34, 31, 25, 0.06);
+  --shadow-md: 0 6px 20px rgba(34, 31, 25, 0.09);
+  --shadow-card: 0 2px 10px rgba(34, 31, 25, 0.05);
+
+  --lh-normal: 1.5;
+  --duration-fast: calc(0.15s * var(--motion-scale));
+  --duration-normal: calc(0.25s * var(--motion-scale));
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --max-content-w: 600px;
+}
+
+[data-theme="dark"] {
+  --color-primary: #7098D6;
+  --color-primary-soft: rgba(112, 152, 214, 0.16);
+  --color-primary-hover: #86A8E0;
+  --text-on-primary: #0F1014;
+
+  --color-secondary: #AE93E8;
+  --color-secondary-soft: rgba(174, 147, 232, 0.16);
+
+  --color-accent: #E0A354;
+  --color-accent-soft: rgba(224, 163, 84, 0.16);
+
+  --color-danger: #E2685D;
+  --color-danger-soft: rgba(226, 104, 93, 0.16);
+  --color-warning: #E0A94A;
+  --color-warning-soft: rgba(224, 169, 74, 0.16);
+  --color-success: #4FBA80;
+  --color-success-soft: rgba(79, 186, 128, 0.16);
+
+  --bg-primary: #17161A;
+  --bg-secondary: #1D1C21;
+  --bg-card: #1D1C21;
+  --bg-elevated: #26252C;
+  --bg-sunken: #131217;
+
+  --border-strong: #35333C;
+  --border-soft: #262530;
+  --border-subtle: #2C2A34;
+
+  --text-primary: #F2F0EA;
+  --text-secondary: #A6A29A;
+  --text-tertiary: #6C6961;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Accent presets — chosen in Settings > Appearance, applied as a class
+   on <html> (accent-blue is the default palette defined above). */
+html.accent-violet {
+  --color-primary: #6E4FCC;
+  --color-primary-soft: rgba(110, 79, 204, 0.1);
+  --color-primary-hover: #5B3FB0;
+}
+html.accent-violet[data-theme="dark"] {
+  --color-primary: #A88FE8;
+  --color-primary-soft: rgba(168, 143, 232, 0.18);
+  --color-primary-hover: #B8A2EF;
+}
+
+html.accent-teal {
+  --color-primary: #1E7F72;
+  --color-primary-soft: rgba(30, 127, 114, 0.1);
+  --color-primary-hover: #17685E;
+}
+html.accent-teal[data-theme="dark"] {
+  --color-primary: #4FC9B7;
+  --color-primary-soft: rgba(79, 201, 183, 0.16);
+  --text-on-primary: #0F1014;
+  --color-primary-hover: #6ED6C6;
+}
+
+html.accent-amber {
+  --color-primary: #B4711F;
+  --color-primary-soft: rgba(180, 113, 31, 0.1);
+  --color-primary-hover: #955E19;
+}
+html.accent-amber[data-theme="dark"] {
+  --color-primary: #E5A951;
+  --color-primary-soft: rgba(229, 169, 81, 0.18);
+  --text-on-primary: #0F1014;
+  --color-primary-hover: #EDBA6E;
+}
+
+html.accent-rose {
+  --color-primary: #B23B5E;
+  --color-primary-soft: rgba(178, 59, 94, 0.1);
+  --color-primary-hover: #952F4D;
+}
+html.accent-rose[data-theme="dark"] {
+  --color-primary: #E27B9B;
+  --color-primary-soft: rgba(226, 123, 155, 0.16);
+  --color-primary-hover: #E893AF;
+}
+
+html.accent-slate {
+  --color-primary: #3E4A61;
+  --color-primary-soft: rgba(62, 74, 97, 0.1);
+  --color-primary-hover: #303A4C;
+}
+html.accent-slate[data-theme="dark"] {
+  --color-primary: #9BAAC7;
+  --color-primary-soft: rgba(155, 170, 199, 0.16);
+  --text-on-primary: #0F1014;
+  --color-primary-hover: #AEBBD3;
+}
+
+/* Font-size scale — three presets set on <html> from Settings > Appearance */
+html.font-scale-sm { --font-scale: 0.92; }
+html.font-scale-md { --font-scale: 1; }
+html.font-scale-lg { --font-scale: 1.12; }
+
+/* Reduced motion — either the user's OS preference or the in-app toggle */
+html.reduce-motion { --motion-scale: 0.01; }
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-force-on) { --motion-scale: 0.01; }
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>سیستم یادگیری شخصی</title>
+<meta name="theme-color" content="#2F5FA8">
+<link rel="manifest" href="./manifest.json">
+
+<link rel="stylesheet" href="css/fonts.css">
+
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+
+</head>
+<body>
+
+  
+  <div id="splash" class="splash">
+    <div class="splash-logo">
+      <span class="material-symbols-rounded">school</span>
+    </div>
+    <div class="splash-title">سیستم یادگیری شخصی</div>
+  </div>
+
+  
+  <div id="app" class="app hidden">
+
+    <header class="topbar">
+      <div class="topbar-leading">
+        <button id="theme-toggle" class="icon-btn" aria-label="تغییر پوسته">
+          <span class="material-symbols-rounded" id="theme-icon">dark_mode</span>
+        </button>
+        <button id="back-btn" class="icon-btn hidden" aria-label="بازگشت">
+          <span class="material-symbols-rounded">arrow_forward</span>
+        </button>
+      </div>
+      <h1 id="page-title" class="topbar-title">خانه</h1>
+      <button id="search-btn" class="icon-btn" aria-label="جستجو">
+        <span class="material-symbols-rounded">search</span>
+      </button>
+    </header>
+
+    <main id="page-content" class="page-content" role="main">
+      
+    </main>
+
+    <nav class="bottom-nav" role="navigation" aria-label="ناوبری اصلی">
+      <button class="nav-item" data-route="home">
+        <span class="material-symbols-rounded">home</span>
+        <span class="nav-label">خانه</span>
+      </button>
+      <button class="nav-item" data-route="library">
+        <span class="material-symbols-rounded">auto_stories</span>
+        <span class="nav-label">کتابخانه</span>
+      </button>
+      <button class="nav-item" data-route="ai">
+        <svg class="ai-custom-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; display: inline-block;">
+          <path d="M12 5a3.5 3.5 0 0 0-3.5-3.5 4.5 4.5 0 0 0-4.5 4.5 3.5 3.5 0 0 0 1 5.5 3.5 3.5 0 0 0-1 4.5 4.5 4.5 0 0 0 4.5 4.5A3.5 3.5 0 0 0 12 17" />
+          <path d="M12 5a3.5 3.5 0 0 1 3.5-3.5 4.5 4.5 0 0 1 4.5 4.5 3.5 3.5 0 0 1-1 5.5 3.5 3.5 0 0 1 1 4.5 4.5 4.5 0 0 1-4.5 4.5A3.5 3.5 0 0 1 12 17" stroke-dasharray="2 2" />
+          <line x1="12" y1="5" x2="15.5" y2="5" stroke-width="1.2" />
+          <circle cx="15.5" cy="5" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="12" y1="11" x2="18" y2="11" stroke-width="1.2" />
+          <circle cx="18" cy="11" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="12" y1="17" x2="15.5" y2="17" stroke-width="1.2" />
+          <circle cx="15.5" cy="17" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="12" y1="1.5" x2="12" y2="22.5" stroke-width="1" stroke-dasharray="1 3" />
+        </svg>
+        <span class="nav-label">هوش مصنوعی</span>
+      </button>
+      <button class="nav-item" data-route="stats">
+        <span class="material-symbols-rounded">insights</span>
+        <span class="nav-label">آمار</span>
+      </button>
+      <button class="nav-item" data-route="settings">
+        <span class="material-symbols-rounded">tune</span>
+        <span class="nav-label">تنظیمات</span>
+      </button>
+    </nav>
+
+  </div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>

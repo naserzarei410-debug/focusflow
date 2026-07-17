@@ -1,0 +1,102 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  /* Belt-and-suspenders alongside the viewport meta tag: some Android
+     WebView builds (the engine behind html2app.dev-style APKs) still
+     allow double-tap / pinch zoom even with user-scalable=no in the
+     viewport meta tag. touch-action: manipulation disables that
+     browser-level double-tap-to-zoom gesture, matching a native app
+     feel. Individual scrollable containers still scroll normally —
+     this only removes the *zoom* gesture, not panning/scrolling. */
+  touch-action: manipulation;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  direction: rtl;
+  text-align: right;
+  line-height: var(--lh-normal);
+  font-size: var(--text-body);
+  transition: background-color var(--duration-normal) var(--ease-standard),
+              color var(--duration-normal) var(--ease-standard);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  outline: none;
+}
+
+/* Consistent, visible keyboard focus across every interactive element,
+   without adding a ring to elements the user reaches by tap/click. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-btn);
+}
+
+/* Numerals, stats, timers and other short LTR figures read better in a
+   geometric mono face than in the body font. */
+.mono-num {
+  font-family: var(--font-mono);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Thin, unobtrusive scrollbars (desktop preview / WebView) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Respect reduced motion: neutralize animations/transitions globally
+   whenever --motion-scale collapses (OS preference or in-app toggle). */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-force-on) *,
+  html:not(.motion-force-on) *::before,
+  html:not(.motion-force-on) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
