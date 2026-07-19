@@ -1,4 +1,23 @@
 /* --- fonts --- */
+
+@font-face {
+  font-family: 'B Kamran';
+  src: url('../assets/fonts/BKamran.woff2') format('woff2'),
+       url('../assets/fonts/BKamran.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BKamran';
+  src: url('../assets/fonts/BKamran.woff2') format('woff2'),
+       url('../assets/fonts/BKamran.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* cyrillic-ext */
 @font-face {
   font-family: 'Inter';

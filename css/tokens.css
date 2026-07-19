@@ -10,6 +10,7 @@
 :root {
   --font-body: 'Vazirmatn', 'Inter', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+  --font-heading: 'BKamran', 'B Kamran', 'B Titr', 'Vazirmatn', sans-serif;
 
   /* Runtime-adjustable knobs (overridden by Settings > Appearance) */
   --font-scale: 1;

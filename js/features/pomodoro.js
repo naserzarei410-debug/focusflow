@@ -75,24 +75,91 @@ const MODE_META = {
   long: { label: 'استراحت بلند', color: 'var(--color-success)', icon: 'celebration' },
 };
 
+// Global state to allow background persistence
+const state = {
+  focusMin: getSetting(KEYS.focus, 25),
+  shortMin: getSetting(KEYS.short, 5),
+  longMin: getSetting(KEYS.long, 15),
+  cyclesBeforeLong: getSetting(KEYS.cycles, 4),
+  mode: 'focus',
+  secondsLeft: 0,
+  totalSeconds: 0,
+  isRunning: false,
+  completedInCycle: 0,
+  timerInterval: null,
+};
+state.secondsLeft = state.focusMin * 60;
+state.totalSeconds = state.secondsLeft;
+
+let activeUiCallback = null;
+
+function globalTick() {
+  state.secondsLeft -= 1;
+  if (state.secondsLeft <= 0) {
+    completePhase();
+  } else if (activeUiCallback) {
+    activeUiCallback();
+  }
+}
+
+function completePhase() {
+  clearInterval(state.timerInterval);
+  playChime();
+  if (navigator.vibrate) navigator.vibrate(state.mode === 'focus' ? [200, 100, 200] : [120]);
+
+  const todayStats = getTodayStats();
+
+  if (state.mode === 'focus') {
+    todayStats.completed += 1;
+    todayStats.focusMinutes += state.focusMin;
+    saveTodayStats(todayStats);
+    state.completedInCycle += 1;
+
+    if (state.completedInCycle >= state.cyclesBeforeLong) {
+      showToast('یک دوره‌ی تمرکز دیگر تمام شد — وقت یک استراحت بلند است!', 'success');
+      state.completedInCycle = 0;
+      setPhase('long', true);
+    } else {
+      showToast('یک پومودورو تمام شد — چند دقیقه استراحت کنید.', 'success');
+      setPhase('short', true);
+    }
+  } else {
+    showToast('استراحت تمام شد — وقت تمرکز دوباره است!', 'info');
+    setPhase('focus', true);
+  }
+}
+
+function setPhase(mode, autoStart) {
+  state.mode = mode;
+  const minutesByMode = { focus: state.focusMin, short: state.shortMin, long: state.longMin };
+  state.totalSeconds = minutesByMode[mode] * 60;
+  state.secondsLeft = state.totalSeconds;
+  
+  if (autoStart) {
+    startGlobal();
+  } else {
+    pauseGlobal();
+  }
+  
+  if (activeUiCallback) activeUiCallback(true);
+}
+
+function startGlobal() {
+  if (state.isRunning) return;
+  state.isRunning = true;
+  state.timerInterval = setInterval(globalTick, 1000);
+  if (activeUiCallback) activeUiCallback(true);
+}
+
+function pauseGlobal() {
+  state.isRunning = false;
+  clearInterval(state.timerInterval);
+  if (activeUiCallback) activeUiCallback(true);
+}
+
 export function renderPomodoro(container) {
   container.innerHTML = '';
-
-  const state = {
-    focusMin: getSetting(KEYS.focus, 25),
-    shortMin: getSetting(KEYS.short, 5),
-    longMin: getSetting(KEYS.long, 15),
-    cyclesBeforeLong: getSetting(KEYS.cycles, 4),
-    mode: 'focus',
-    secondsLeft: 0,
-    totalSeconds: 0,
-    isRunning: false,
-    completedInCycle: 0,
-    timerInterval: null,
-  };
-  state.secondsLeft = state.focusMin * 60;
-  state.totalSeconds = state.secondsLeft;
-
+  
   const todayStats = getTodayStats();
 
   const wrap = document.createElement('div');
@@ -293,72 +360,24 @@ export function renderPomodoro(container) {
     cycleCaption.textContent = `دور ${(state.completedInCycle + 1).toLocaleString('fa-IR')} از ${state.cyclesBeforeLong.toLocaleString('fa-IR')}`;
   }
 
-  function setPhase(mode, autoStart) {
-    state.mode = mode;
-    const minutesByMode = { focus: state.focusMin, short: state.shortMin, long: state.longMin };
-    state.totalSeconds = minutesByMode[mode] * 60;
-    state.secondsLeft = state.totalSeconds;
-    applyModeStyles();
-    renderTick();
-    renderDots();
-    if (autoStart) start(); else pause();
-  }
-
   function updateStartPauseBtn() {
     startPauseBtn.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;">${state.isRunning ? 'pause' : 'play_arrow'}</span>`;
     startPauseBtn.style.background = state.isRunning ? 'var(--color-secondary)' : 'var(--color-primary)';
   }
 
-  function tick() {
-    state.secondsLeft -= 1;
-    if (state.secondsLeft <= 0) {
-      completePhase();
-      return;
+  // Hook up UI updates to global timer events
+  activeUiCallback = (phaseChanged = false) => {
+    if (phaseChanged) {
+      applyModeStyles();
+      renderDots();
     }
     renderTick();
-  }
-
-  function completePhase() {
-    clearInterval(state.timerInterval);
-    playChime();
-    if (navigator.vibrate) navigator.vibrate(state.mode === 'focus' ? [200, 100, 200] : [120]);
-
-    if (state.mode === 'focus') {
-      todayStats.completed += 1;
-      todayStats.focusMinutes += state.focusMin;
-      saveTodayStats(todayStats);
-      renderTodayStats();
-      state.completedInCycle += 1;
-
-      if (state.completedInCycle >= state.cyclesBeforeLong) {
-        showToast('یک دوره‌ی تمرکز دیگر تمام شد — وقت یک استراحت بلند است!', 'success');
-        state.completedInCycle = 0; // reset after the long break kicks in
-        setPhase('long', true);
-      } else {
-        showToast('یک پومودورو تمام شد — چند دقیقه استراحت کنید.', 'success');
-        setPhase('short', true);
-      }
-    } else {
-      showToast('استراحت تمام شد — وقت تمرکز دوباره است!', 'info');
-      setPhase('focus', true);
-    }
-  }
-
-  function start() {
-    if (state.isRunning) return;
-    state.isRunning = true;
     updateStartPauseBtn();
-    state.timerInterval = setInterval(tick, 1000);
-  }
-
-  function pause() {
-    state.isRunning = false;
-    updateStartPauseBtn();
-    clearInterval(state.timerInterval);
-  }
+    renderTodayStats();
+  };
 
   startPauseBtn.addEventListener('click', () => {
-    if (state.isRunning) pause(); else start();
+    if (state.isRunning) pauseGlobal(); else startGlobal();
   });
 
   resetBtn.addEventListener('click', () => {
@@ -375,11 +394,9 @@ export function renderPomodoro(container) {
     }
   });
 
-  // Stop the countdown if the user navigates away any other way (bottom
-  // nav, hardware back, etc.) so it can't keep firing after this screen
-  // is gone — same safety pattern used by the exam timer.
+  // Stop listening for UI updates if navigated away, but leave the timer running
   window.addEventListener('hashchange', () => {
-    clearInterval(state.timerInterval);
+    activeUiCallback = null;
   }, { once: true });
 
   applyModeStyles();

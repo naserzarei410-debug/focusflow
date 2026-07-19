@@ -1,3 +1,4 @@
+import { initInteractiveInterval } from './interval-plot.js';
 import * as d3 from 'd3';
 
 function fixJsonEscape(str) {
@@ -18,6 +19,34 @@ function fixJsonEscape(str) {
     }
   }
   return out;
+}
+
+function extractJsonArray(text) {
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+
+  const match = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[0]);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+
+  let cleanText = text.replace(/```json/gi, '').replace(/```/gi, '').trim();
+  try {
+    const parsed = JSON.parse(cleanText);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+
+  try {
+    const parsed = JSON.parse(fixJsonEscape(cleanText));
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+
+  throw new Error('فرمت پاسخ هوش مصنوعی نامعتبر بود. لطفاً مجدداً تلاش کنید.');
 }
 
 
@@ -108,7 +137,7 @@ export async function renderHome(container) {
     goalHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
     
     const goalTitle = document.createElement('span');
-    goalTitle.style.cssText = 'font-size:14px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:var(--space-1);';
+    goalTitle.style.cssText = 'font-family:var(--font-heading); font-size:18px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:var(--space-1);';
     goalTitle.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px; color:var(--color-primary);">track_changes</span> هدف روزانه مطالعه';
     
     const goalStats = document.createElement('span');
@@ -641,20 +670,10 @@ async function startPdfEngineFlow(categories) {
 
       loadingOverlay.remove();
 
-      let cards = [];
-      try {
-        cards = JSON.parse(data.text);
-      } catch (pe) {
-        let cleanText = data.text.replace(/```json/gi, '').replace(/```/gi, '').trim();
-        try {
-          cards = JSON.parse(cleanText);
-        } catch(pe2) {
-          cards = JSON.parse(fixJsonEscape(cleanText));
-        }
-      }
+      let cards = extractJsonArray(data.text);
 
-      if (!Array.isArray(cards) || cards.length === 0) {
-        throw new Error('فرمت پاسخ هوش مصنوعی نامعتبر بود.');
+      if (!cards || cards.length === 0) {
+        throw new Error('هیچ فلش‌کارتی یافت نشد.');
       }
 
       openApprovalDialog(cards, selectedCatId);
@@ -1166,16 +1185,9 @@ function openOcrPreviewDialog(extractedText, categoryId, categories) {
 
             loadingOverlay.remove();
 
-            let cards = [];
-            try {
-              cards = JSON.parse(data.text);
-            } catch (pe) {
-              let cleanText = data.text.replace(/```json/gi, '').replace(/```/gi, '').trim();
-              try {
-                cards = JSON.parse(cleanText);
-              } catch(pe2) {
-                cards = JSON.parse(fixJsonEscape(cleanText));
-              }
+            const cards = extractJsonArray(data.text);
+            if (!cards || cards.length === 0) {
+              throw new Error('هیچ فلش‌کارتی یافت نشد.');
             }
 
             openApprovalDialog(cards, categoryId);
@@ -1491,103 +1503,200 @@ do: 20
 export async function renderAI(container) {
   container.innerHTML = '';
   
-  // Outer wrapping container
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex; flex-direction:column; height:calc(100vh - 140px); width:100%; max-width:var(--max-content-w); margin:0 auto; gap:var(--space-2); box-sizing:border-box; min-width:0;';
+  wrap.style.cssText = 'display:flex; flex-direction:column; height:calc(100vh - 140px); width:100%; max-width:var(--max-content-w); margin:0 auto; gap:var(--space-2); box-sizing:border-box; min-width:0; position:relative;';
   container.appendChild(wrap);
 
-  // Top Action/Selection bar
-  const topBar = document.createElement('div');
-  topBar.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-3) 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap;';
+  // --- Sidebar Overlay ---
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:998; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.3s ease;';
+  document.body.appendChild(overlay);
 
-  const selectCol = document.createElement('div');
-  selectCol.style.cssText = 'display:flex; align-items:center; gap:var(--space-2); min-width:0;';
+  // --- Sidebar Drawer ---
+  const sidebar = document.createElement('div');
+  sidebar.style.cssText = 'position:fixed; top:0; bottom:0; left:0; width:300px; max-width:80vw; z-index:999; background:color-mix(in srgb, var(--bg-card) 85%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); transform:translateX(-100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 4px 0 24px rgba(0,0,0,0.1); display:flex; flex-direction:column; padding:var(--space-3); gap:var(--space-3);';
+  
+  const sidebarHeader = document.createElement('div');
+  sidebarHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between; font-weight:800; font-size:var(--text-h3); color:var(--text-primary); border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-2);';
+  sidebarHeader.textContent = 'تاریخچه گفتگوها';
+  
+  const closeSidebarBtn = document.createElement('button');
+  closeSidebarBtn.className = 'icon-btn';
+  closeSidebarBtn.innerHTML = '<span class="material-symbols-rounded">close</span>';
+  sidebarHeader.appendChild(closeSidebarBtn);
+  sidebar.appendChild(sidebarHeader);
 
-  const selectLabel = document.createElement('span');
-  selectLabel.style.cssText = 'font-size:var(--text-caption); font-weight:600; color:var(--text-secondary); white-space:nowrap; display:flex; align-items:center; gap:var(--space-1);';
-  selectLabel.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px; color:var(--color-primary); vertical-align:middle;">psychology</span>موضوع:';
+  const newChatBtn = createButton({
+    label: 'چت جدید',
+    icon: 'add',
+    variant: 'primary',
+    onClick: () => {
+      openCategoryPickerForNewChat();
+    }
+  });
+  sidebar.appendChild(newChatBtn);
 
-  const categorySelect = document.createElement('select');
-  categorySelect.className = 'ds-input';
-  categorySelect.style.cssText = 'height:36px; padding:0 var(--space-4) 0 var(--space-2); border-radius:18px; border:1px solid var(--border-subtle); background:var(--bg-card); color:var(--text-primary); font-family:inherit; font-size:var(--text-caption); font-weight:600; cursor:pointer; min-width:140px; max-width:240px; outline:none; transition:all 0.2s;';
+  const historyList = document.createElement('div');
+  historyList.style.cssText = 'flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:var(--space-2);';
+  sidebar.appendChild(historyList);
+  document.body.appendChild(sidebar);
 
-  // Load categories to populate select
-  const categories = await categoryRepository.getAll();
-  const optionGeneral = document.createElement('option');
-  optionGeneral.value = 'general';
-  optionGeneral.textContent = 'سوال عمومی';
-  categorySelect.appendChild(optionGeneral);
+  function closeSidebar() {
+    sidebar.style.transform = 'translateX(-100%)';
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none';
+  }
+  
+  closeSidebarBtn.addEventListener('click', closeSidebar);
+  overlay.addEventListener('click', closeSidebar);
 
-  for (const cat of categories) {
-    const opt = document.createElement('option');
-    opt.value = cat.id;
-    opt.textContent = cat.title;
-    categorySelect.appendChild(opt);
+  // Disconnect sidebar on unmount
+  const originalAppend = container.appendChild;
+  container.appendChild = function(node) {
+     return originalAppend.call(this, node);
+  };
+  const cleanup = () => {
+     if (document.body.contains(sidebar)) document.body.removeChild(sidebar);
+     if (document.body.contains(overlay)) document.body.removeChild(overlay);
+  };
+  // We can just rely on router clearing the container, but since we attached to body:
+  const mo = new MutationObserver(() => {
+     if (!document.body.contains(container) || !container.contains(wrap)) {
+        cleanup();
+        mo.disconnect();
+     }
+  });
+  mo.observe(document.body, {childList: true, subtree: true});
+
+  // Hook up global menu button
+  const menuBtn = document.getElementById('menu-btn');
+  if (menuBtn) {
+    const newMenuBtn = menuBtn.cloneNode(true);
+    menuBtn.parentNode.replaceChild(newMenuBtn, menuBtn);
+    newMenuBtn.addEventListener('click', () => {
+      renderHistoryList();
+      sidebar.style.transform = 'translateX(0)';
+      overlay.style.opacity = '1';
+      overlay.style.pointerEvents = 'auto';
+    });
   }
 
-  selectCol.append(selectLabel, categorySelect);
+  async function renderHistoryList() {
+    historyList.innerHTML = '';
+    const convs = await aiConversationRepository.getAll();
+    convs.sort((a,b) => b.updatedAt - a.updatedAt);
+    
+    for (const conv of convs) {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:var(--space-2); border-radius:var(--radius-card); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s; position:relative;';
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.style.cssText = 'flex:1; min-width:0;';
+      
+      const catText = conv.categoryId ? ((await categoryRepository.getById(conv.categoryId))?.title || 'نامشخص') : 'عمومی';
+      const titleEl = document.createElement('div');
+      titleEl.style.cssText = 'font-weight:700; font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+      titleEl.textContent = `${catText}: ${conv.topic || 'چت'}`;
+      
+      const dateEl = document.createElement('div');
+      dateEl.style.cssText = 'font-size:11px; color:var(--text-secondary); margin-top:2px;';
+      dateEl.textContent = new Date(conv.updatedAt || conv.createdAt).toLocaleDateString('fa-IR');
+      
+      contentDiv.append(titleEl, dateEl);
+      item.appendChild(contentDiv);
+      
+      // Long press for delete
+      let pressTimer;
+      const startPress = () => {
+        pressTimer = setTimeout(() => {
+          showDeleteIcon(item, conv.id);
+        }, 500);
+      };
+      const cancelPress = () => clearTimeout(pressTimer);
+      
+      item.addEventListener('mousedown', startPress);
+      item.addEventListener('touchstart', startPress);
+      item.addEventListener('mouseup', cancelPress);
+      item.addEventListener('mouseleave', cancelPress);
+      item.addEventListener('touchend', cancelPress);
+      item.addEventListener('touchcancel', cancelPress);
+      
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.del-btn')) return;
+        activeConversation = conv;
+        currentCategoryId = conv.categoryId || 'general';
+        loadConversation();
+        closeSidebar();
+      });
+      
+      historyList.appendChild(item);
+    }
+  }
 
-  const clearBtn = createButton({
-    label: 'شروع مجدد',
-    icon: 'restart_alt',
-    variant: 'text',
-    onClick: () => handleResetChat()
-  });
-  clearBtn.style.cssText = 'color:var(--text-secondary); font-size:var(--text-caption); font-weight:600; height:36px; padding:0 var(--space-3); border-radius:18px; display:inline-flex; align-items:center; gap:var(--space-1); transition:all 0.2s;';
-  
-  clearBtn.addEventListener('mouseenter', () => {
-    clearBtn.style.color = 'var(--color-danger)';
-    clearBtn.style.background = 'var(--color-danger-soft)';
-  });
-  clearBtn.addEventListener('mouseleave', () => {
-    clearBtn.style.color = 'var(--text-secondary)';
-    clearBtn.style.background = 'transparent';
-  });
+  function showDeleteIcon(item, convId) {
+    if (item.querySelector('.del-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn del-btn material-symbols-rounded';
+    btn.textContent = 'delete';
+    btn.style.cssText = 'color:var(--color-danger); font-size:20px;';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDialog({
+        title: 'حذف تاریخچه چت',
+        body: 'آیا از حذف این گفتگو مطمئن هستید؟',
+        actions: [
+          { label: 'انصراف', variant: 'text' },
+          { label: 'حذف', variant: 'danger', onClick: async () => {
+             await aiConversationRepository.delete(convId);
+             if (activeConversation && activeConversation.id === convId) {
+                activeConversation = null;
+                currentCategoryId = 'general';
+                loadConversation();
+             }
+             renderHistoryList();
+          }}
+        ]
+      });
+    });
+    item.appendChild(btn);
+  }
 
-  topBar.append(selectCol, clearBtn);
-  wrap.appendChild(topBar);
+  async function openCategoryPickerForNewChat() {
+    const cats = await categoryRepository.getAll();
+    const actions = cats.map(c => ({
+      label: c.title,
+      variant: 'secondary',
+      onClick: () => {
+        activeConversation = null;
+        currentCategoryId = c.id;
+        loadConversation();
+        closeSidebar();
+      }
+    }));
+    actions.unshift({
+      label: 'عمومی',
+      variant: 'primary',
+      onClick: () => {
+        activeConversation = null;
+        currentCategoryId = 'general';
+        loadConversation();
+        closeSidebar();
+      }
+    });
+    openDialog({
+      title: 'انتخاب دسته',
+      body: 'برای شروع چت، یک دسته انتخاب کنید:',
+      actions: actions
+    });
+  }
+
+  // Removed topBar implementation
 
   // Chat conversation list
   const chatList = document.createElement('div');
   chatList.style.cssText = 'flex-grow:1; overflow-y:auto; padding:var(--space-2) 0; display:flex; flex-direction:column; gap:var(--space-3);';
   wrap.appendChild(chatList);
 
-  // Suggestions panel
-  const suggestBar = document.createElement('div');
-  suggestBar.style.cssText = 'display:flex; gap:var(--space-2); overflow-x:auto; padding:var(--space-2) 0; scrollbar-width:none; -ms-overflow-style:none;';
-  
-  // Quick prompts now send the request immediately instead of just filling
-  // the input box and waiting for a second tap on "send" — a single tap
-  // both fills the box (so the user sees exactly what was asked) and fires
-  // the request right away.
-  const addQuickPrompt = (label, icon, text) => {
-    const btn = createButton({
-      label,
-      icon,
-      variant: 'secondary',
-      onClick: () => {
-        inputField.input.value = text;
-        adjustInputHeight();
-        handleSend();
-      }
-    });
-    btn.style.cssText += '; border-radius: 20px; font-size: 11px; padding: 4px var(--space-3); height: 32px; white-space: nowrap; background: var(--bg-card);';
-    suggestBar.appendChild(btn);
-  };
-
-  const updateQuickPrompts = (catName) => {
-    suggestBar.innerHTML = '';
-    // When no category is selected ("سوال عمومی") there is no topic to
-    // build a summary/quiz/flashcard suggestion around, so those actions
-    // are hidden and only shown once a real study category is picked.
-    if (catName !== 'general') {
-      addQuickPrompt('خلاصه درس', 'summarize', `یک خلاصه‌ی جامع از موضوع "${catName}" برای من بگو.`);
-      addQuickPrompt('امتحان کتبی (Quiz)', 'quiz', `از موضوع "${catName}" ۳ سوال چهار گزینه‌ای از من بپرس و منتظر جوابم باش.`);
-      addQuickPrompt('تولید فلش‌کارت', 'style', `برای من ۵ فلش‌کارت کلیدی بر اساس مهم‌ترین مفاهیم "${catName}" ایجاد کن.`);
-    }
-  };
-
-  wrap.appendChild(suggestBar);
 
   // Attachment file input (hidden)
   const fileSelector = document.createElement('input');
@@ -1604,28 +1713,31 @@ export async function renderAI(container) {
 
   // Footer text area input
   const inputContainer = document.createElement('div');
-  inputContainer.style.cssText = 'display:flex; align-items:flex-end; gap:var(--space-2); border-top:1px solid var(--border-subtle); padding:var(--space-2) 0; width:100%; box-sizing:border-box; min-width:0;';
+  inputContainer.style.cssText = 'display:flex; align-items:flex-end; gap:var(--space-2); padding:var(--space-1) var(--space-1); background: color-mix(in srgb, var(--bg-card) 60%, transparent); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1.5px solid var(--border-soft); border-radius: 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.06); width:100%; box-sizing:border-box; min-width:0; margin-top: auto; margin-bottom: var(--space-2);';
 
   const attachBtn = createButton({
     label: '',
-    icon: 'attach_file',
+    icon: 'add',
     variant: 'text',
     onClick: () => fileSelector.click()
   });
-  attachBtn.style.cssText += '; width:44px; height:44px; border-radius:var(--radius-input); display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; color:var(--text-secondary); margin-bottom: 0;';
+  attachBtn.style.cssText += '; width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; color:var(--text-secondary); margin-bottom: 2px; margin-right: 4px; transition: background 0.2s, color 0.2s;';
+  
+  attachBtn.addEventListener('mouseenter', () => { attachBtn.style.background = 'var(--bg-sunken)'; attachBtn.style.color = 'var(--color-primary)'; });
+  attachBtn.addEventListener('mouseleave', () => { attachBtn.style.background = 'transparent'; attachBtn.style.color = 'var(--text-secondary)'; });
 
   const inputField = createTextArea({
-    placeholder: 'سوال خود را بپرسید یا فایل اضافه کنید…',
+    placeholder: 'پیام خود را بنویسید...',
     rows: 1
   });
-  inputField.style.cssText += '; flex-grow:1; min-width:0;';
-  inputField.input.style.cssText = 'width: 100%; box-sizing: border-box; border-radius: var(--radius-input); resize: none; min-height: 44px; height: 44px; padding: 10px 16px; overflow-y: hidden; max-height: 150px; line-height: 1.5; border: 1.5px solid var(--border-strong); background-color: var(--bg-secondary); color: var(--text-primary); transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); font-family: inherit; font-size: var(--text-body);';
+  inputField.style.cssText += '; flex-grow:1; min-width:0; margin-bottom:2px;';
+  inputField.input.style.cssText = 'width: 100%; box-sizing: border-box; resize: none; min-height: 40px; height: 40px; padding: 9px 8px; overflow-y: hidden; max-height: 150px; line-height: 1.5; border: none; background-color: transparent; color: var(--text-primary); font-family: inherit; font-size: 15px; outline: none; box-shadow: none;';
 
   // Set up auto-resizing
   function adjustInputHeight() {
-    inputField.input.style.height = '44px'; // reset
+    inputField.input.style.height = '40px'; // reset
     const scrollHeight = inputField.input.scrollHeight;
-    if (scrollHeight > 44) {
+    if (scrollHeight > 40) {
       inputField.input.style.height = Math.min(scrollHeight, 150) + 'px';
       if (scrollHeight > 150) {
         inputField.input.style.overflowY = 'auto';
@@ -1640,11 +1752,11 @@ export async function renderAI(container) {
 
   const sendBtn = createButton({
     label: '',
-    icon: 'send',
+    icon: 'arrow_upward',
     variant: 'primary',
     onClick: () => handleSend()
   });
-  sendBtn.style.cssText += '; width:44px; height:44px; border-radius:var(--radius-input); display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;';
+  sendBtn.style.cssText += '; width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; margin-bottom: 2px; margin-left: 4px; box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);';
 
   inputContainer.append(attachBtn, inputField, sendBtn);
   wrap.appendChild(inputContainer);
@@ -1773,26 +1885,16 @@ export async function renderAI(container) {
     }
   });
 
-  // Switch category
-  categorySelect.addEventListener('change', async () => {
-    currentCategoryId = categorySelect.value;
-    const cat = currentCategoryId === 'general' ? null : await categoryRepository.getById(currentCategoryId);
-    updateQuickPrompts(cat ? cat.title : 'general');
-    await loadConversation();
-  });
-
   // Initial prompt setup
-  updateQuickPrompts('general');
   await loadConversation();
 
   async function loadConversation() {
     chatList.innerHTML = '';
     
-    // Find conversation in database
-    const dbCatId = currentCategoryId === 'general' ? null : currentCategoryId;
-    const convs = await aiConversationRepository.getAll();
-    activeConversation = convs.find(c => c.categoryId === dbCatId) || null;
-
+    // We already have activeConversation set when selecting from sidebar.
+    // If we're just loading the page for the first time, activeConversation is null,
+    // so we just show the greeting. We do NOT auto-load the latest chat for the category anymore.
+    
     if (!activeConversation) {
       renderGreeting();
     } else {
@@ -1805,24 +1907,112 @@ export async function renderAI(container) {
 
   function renderGreeting() {
     chatList.innerHTML = '';
-    const welcome = document.createElement('div');
-    welcome.style.cssText = 'background:var(--color-primary-soft); border:1px solid var(--border-subtle); padding:var(--space-4); border-radius:var(--radius-card); display:flex; flex-direction:column; align-items:center; gap:var(--space-2); text-align:center; margin:var(--space-4) auto; width:100%; max-width:480px; box-sizing:border-box;';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex; flex-direction:column; flex:1; align-items:center; justify-content:center; padding:var(--space-4); animation: slideUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; gap: var(--space-4);';
     
-    const icon = document.createElement('span');
-    icon.className = 'material-symbols-rounded';
-    icon.style.cssText = 'font-size:48px; color:var(--color-primary);';
-    icon.textContent = 'smart_toy';
+    const animContainer = document.createElement('div');
+    animContainer.style.cssText = 'display:flex; align-items:center; justify-content:center; margin-bottom:var(--space-2);';
+    animContainer.innerHTML = `
+      <svg viewBox="0 0 300 200" width="270" height="180" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <style>
+            .hero-text {
+              font-family: 'Lora', serif, system-ui, -apple-system, sans-serif;
+              font-weight: 600;
+              font-size: 22px;
+              letter-spacing: 0.8px;
+              text-anchor: middle;
+              dominant-baseline: central;
+              fill: var(--color-primary);
+            }
+            .hero-highlight {
+              fill: white;
+            }
+            
+            .dot-line {
+              transform-box: fill-box;
+              transform-origin: center;
+              animation: animDotLine 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            .text-container {
+              transform-box: fill-box;
+              transform-origin: center;
+              animation: animTextGrow 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            .breathe-group {
+              transform-box: fill-box;
+              transform-origin: center;
+              animation: animBreathe 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            @keyframes animDotLine {
+              0%, 2% { transform: scaleX(0) scaleY(1); opacity: 0; }
+              4% { transform: scaleX(0.02) scaleY(1); opacity: 1; }
+              9% { transform: scaleX(1) scaleY(1); opacity: 1; }
+              14%, 86% { transform: scaleX(1) scaleY(0); opacity: 0; }
+              91% { transform: scaleX(1) scaleY(1); opacity: 1; }
+              96% { transform: scaleX(0.02) scaleY(1); opacity: 1; }
+              98%, 100% { transform: scaleX(0) scaleY(1); opacity: 0; }
+            }
+            
+            @keyframes animTextGrow {
+              0%, 9% { transform: scaleY(0); opacity: 0; }
+              14%, 86% { transform: scaleY(1); opacity: 1; }
+              91%, 100% { transform: scaleY(0); opacity: 0; }
+            }
+            
+            @keyframes animBreathe {
+              0%, 21.5% { transform: scale(1); }
+              34% { transform: scale(1.02); }
+              46.5%, 100% { transform: scale(1); }
+            }
+          </style>
+          
+          <mask id="sweep-mask">
+            <g transform="skewX(-20)">
+              <rect y="40" height="120" width="35" fill="white">
+                <animate attributeName="x" 
+                         values="-80; -80; 360; 360" 
+                         keyTimes="0; 0.465; 0.665; 1" 
+                         keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1" 
+                         calcMode="spline" 
+                         dur="8s" 
+                         repeatCount="indefinite" />
+              </rect>
+            </g>
+          </mask>
+        </defs>
+
+        <g class="breathe-group">
+          <!-- The central dot/line -->
+          <rect class="dot-line" x="20" y="92" width="260" height="2" fill="var(--color-primary)" rx="1" />
+          
+          <!-- The morphing text -->
+          <g class="text-container">
+            <text class="hero-text" x="150" y="92">Learn Beyond Limits</text>
+            <!-- Highlight text overlay -->
+            <text class="hero-text hero-highlight" x="150" y="92" opacity="0.6" mask="url(#sweep-mask)">Learn Beyond Limits</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    const textContainer = document.createElement('div');
+    textContainer.style.cssText = 'display:flex; flex-direction:column; align-items:center; text-align:center; gap:var(--space-2); margin-top:-20px;';
 
     const title = document.createElement('div');
-    title.style.cssText = 'font-weight:800; font-size:var(--text-section); color:var(--text-primary);';
-    title.textContent = 'دستیار هوشمند مطالعه Gemini';
+    title.style.cssText = 'font-family: \'BKamran\', \'B Kamran\', var(--font-heading); font-weight:bold; font-size:36px; color:var(--text-primary); opacity: 0.9; margin-bottom: -4px;';
+    title.textContent = 'همراه هوشمند یادگیری';
 
     const desc = document.createElement('div');
-    desc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary); line-height:1.6;';
-    desc.textContent = 'به بخش دستیار یادگیری هوشمند خوش آمدید. من می‌توانم مطالب درسی شما را خلاصه کنم، آزمون‌های آزمایشی بسازم و فایل‌ها یا تصاویر آموزشی‌تان را تحلیل کنم.';
+    desc.style.cssText = 'font-size:14px; color:var(--text-secondary); line-height:1.6; font-weight:400; max-width:280px; opacity:0.75;';
+    desc.textContent = 'سوالی بپرسید یا سندی را برای تحلیل و بررسی ارسال کنید.';
 
-    welcome.append(icon, title, desc);
-    chatList.appendChild(welcome);
+    textContainer.append(title, desc);
+    wrapper.append(animContainer, textContainer);
+    chatList.appendChild(wrapper);
   }
 
   async function handleResetChat() {
@@ -1868,7 +2058,9 @@ export async function renderAI(container) {
 
     // Save user message to IndexedDB
     const dbCatId = currentCategoryId === 'general' ? null : currentCategoryId;
+    let isFirstMessage = false;
     if (!activeConversation) {
+      isFirstMessage = true;
       activeConversation = createAiConversationModel({
         categoryId: dbCatId,
         messages: []
@@ -1882,6 +2074,26 @@ export async function renderAI(container) {
       timestamp: new Date().toISOString()
     });
     await aiConversationRepository.update(activeConversation.id, { messages: activeConversation.messages });
+
+    if (isFirstMessage) {
+      setTimeout(async () => {
+        try {
+          const { callGeminiAPI } = await import('../core/gemini-client.js');
+          const apiKey = await settingsRepository.getSetting('gemini_api_key', '');
+          const modelName = await settingsRepository.getSetting('gemini_model', '');
+          const topicResp = await callGeminiAPI([
+            {role: 'user', parts: [{text: `موضوع این مکالمه را در حداکثر ۴ کلمه بیان کن. فقط کلمات موضوع را بنویس بدون هیچ توضیح اضافه‌ای: "${text}"`}]}
+          ], { model: modelName || 'gemini-2.5-flash' }, apiKey);
+          if (topicResp) {
+            const topicText = topicResp.candidates[0].content.parts[0].text.trim();
+            activeConversation.topic = topicText.replace(/['"]/g, '');
+            await aiConversationRepository.update(activeConversation.id, { topic: activeConversation.topic });
+          }
+        } catch(e) {
+          console.error('Topic extraction failed', e);
+        }
+      }, 0);
+    }
 
     // Render Loading indicator for assistant
     const loadBubble = renderLoadingBubble();
@@ -2569,6 +2781,9 @@ export async function renderAI(container) {
       const endValStr = parts[1];
       
       const evalVal = (str) => {
+        const s = str.toLowerCase().replace(/[\s\\]/g, '');
+        if (s.includes('-infty') || s.includes('-∞') || s.includes('infty-') || s.includes('∞-')) return Number.NEGATIVE_INFINITY;
+        if (s.includes('+infty') || s.includes('+∞') || s.includes('infty+') || s.includes('∞+') || s === 'infty' || s === '∞') return Number.POSITIVE_INFINITY;
         if (str.includes('/')) {
           const p = str.split('/');
           return parseFloat(p[0]) / parseFloat(p[1]);
@@ -7498,45 +7713,29 @@ export async function renderAI(container) {
             } else if (op === 'D_only') {
               shaded.D_only = true;
               showResultPanel(`${spec.label_D} - (${spec.label_A} ∪ ${spec.label_B} ∪ ${spec.label_C})`, `اعضایی که فقط در مجموعه ${spec.label_D} قرار دارند و با هیچ مجموعه دیگری مشترک نیستند.`, spec.elements_D);
-            } else if (op === 'intersection_abcd') {
-              shaded.ABCD = true;
-              showResultPanel(`${spec.label_A} ∩ ${spec.label_B} ∩ ${spec.label_C} ∩ ${spec.label_D}`, `اشتراک هر چهار مجموعه: اعضایی که همزمان در هر چهار مجموعه حضور دارند.`, spec.elements_ABCD);
-            } else if (op === 'union_abcd') {
-              Object.keys(shaded).forEach(k => { if (k !== 'U_only') shaded[k] = true; });
-              const unionElements = [...new Set([
-                ...spec.elements_A, ...spec.elements_B, ...spec.elements_C, ...spec.elements_D,
-                ...spec.elements_AB, ...spec.elements_AC, ...spec.elements_AD,
-                ...spec.elements_BC, ...spec.elements_BD, ...spec.elements_CD,
-                ...spec.elements_ABC, ...spec.elements_ABD, ...spec.elements_ACD, ...spec.elements_BCD,
-                ...spec.elements_ABCD
-              ])];
-              showResultPanel(`${spec.label_A} ∪ ${spec.label_B} ∪ ${spec.label_C} ∪ ${spec.label_D}`, `اجتماع هر چهار مجموعه: تمام اعضایی که در حداقل یکی از این چهار مجموعه حضور دارند.`, unionElements);
-            } else if (op === 'U_only') {
-              shaded.U_only = true;
-              showResultPanel(`(${spec.label_A} ∪ ${spec.label_B} ∪ ${spec.label_C} ∪ ${spec.label_D})'`, `متمم اجتماع چهار مجموعه: اعضایی که در هیچ‌کدام از مجموعه‌ها نیستند.`, spec.elements_U);
-            } else if (op === 'A_all') {
-              shaded.A_only = shaded.AB_only = shaded.AC_only = shaded.AD_only = shaded.ABC_only = shaded.ABD_only = shaded.ACD_only = shaded.ABCD = true;
+            } else if (op === 'A') {
+              shaded.A_only = true; shaded.AB_only = true; shaded.AC_only = true; shaded.AD_only = true; shaded.ABC_only = true; shaded.ABD_only = true; shaded.ACD_only = true; shaded.ABCD = true;
               const aElements = [...new Set([
                 ...spec.elements_A, ...spec.elements_AB, ...spec.elements_AC, ...spec.elements_AD,
                 ...spec.elements_ABC, ...spec.elements_ABD, ...spec.elements_ACD, ...spec.elements_ABCD
               ])];
               showResultPanel(`مجموعه ${spec.label_A}`, `تمام اعضایی که در مجموعه ${spec.label_A} قرار گرفته‌اند.`, aElements);
-            } else if (op === 'B_all') {
-              shaded.B_only = shaded.AB_only = shaded.BC_only = shaded.BD_only = shaded.ABC_only = shaded.ABD_only = shaded.BCD_only = shaded.ABCD = true;
+            } else if (op === 'B') {
+              shaded.B_only = true; shaded.AB_only = true; shaded.BC_only = true; shaded.BD_only = true; shaded.ABC_only = true; shaded.ABD_only = true; shaded.BCD_only = true; shaded.ABCD = true;
               const bElements = [...new Set([
                 ...spec.elements_B, ...spec.elements_AB, ...spec.elements_BC, ...spec.elements_BD,
                 ...spec.elements_ABC, ...spec.elements_ABD, ...spec.elements_BCD, ...spec.elements_ABCD
               ])];
               showResultPanel(`مجموعه ${spec.label_B}`, `تمام اعضایی که در مجموعه ${spec.label_B} قرار گرفته‌اند.`, bElements);
-            } else if (op === 'C_all') {
-              shaded.C_only = shaded.AC_only = shaded.BC_only = shaded.CD_only = shaded.ABC_only = shaded.ACD_only = shaded.BCD_only = shaded.ABCD = true;
+            } else if (op === 'C') {
+              shaded.C_only = true; shaded.AC_only = true; shaded.BC_only = true; shaded.CD_only = true; shaded.ABC_only = true; shaded.ACD_only = true; shaded.BCD_only = true; shaded.ABCD = true;
               const cElements = [...new Set([
                 ...spec.elements_C, ...spec.elements_AC, ...spec.elements_BC, ...spec.elements_CD,
                 ...spec.elements_ABC, ...spec.elements_ACD, ...spec.elements_BCD, ...spec.elements_ABCD
               ])];
               showResultPanel(`مجموعه ${spec.label_C}`, `تمام اعضایی که در مجموعه ${spec.label_C} قرار گرفته‌اند.`, cElements);
-            } else if (op === 'D_all') {
-              shaded.D_only = shaded.AD_only = shaded.BD_only = shaded.CD_only = shaded.ABD_only = shaded.ACD_only = shaded.BCD_only = shaded.ABCD = true;
+            } else if (op === 'D') {
+              shaded.D_only = true; shaded.AD_only = true; shaded.BD_only = true; shaded.CD_only = true; shaded.ABD_only = true; shaded.ACD_only = true; shaded.BCD_only = true; shaded.ABCD = true;
               const dElements = [...new Set([
                 ...spec.elements_D, ...spec.elements_AD, ...spec.elements_BD, ...spec.elements_CD,
                 ...spec.elements_ABD, ...spec.elements_ACD, ...spec.elements_BCD, ...spec.elements_ABCD
@@ -7641,266 +7840,7 @@ export async function renderAI(container) {
   function initIntervalPlots(parent) {
     const cards = parent.querySelectorAll('.interactive-interval-card');
     cards.forEach((card) => {
-      const specStr = card.getAttribute('data-spec');
-      const spec = parseIntervalSpec(specStr);
-      
-      const svg = card.querySelector('.interval-svg');
-      const hoverInfo = card.querySelector('.interval-hover-info');
-      const btnContainer = card.querySelector('.interval-buttons');
-      const resultDisplay = card.querySelector('.interval-result-display');
-      const resultTitle = card.querySelector('.result-title');
-      const resultDesc = card.querySelector('.result-desc');
-      const resultSet = card.querySelector('.result-set');
-
-      const endpoints = [];
-      spec.intervals.forEach((inv) => {
-        const range = parseRange(inv.rangeStr);
-        if (range) {
-          endpoints.push({ val: range.startVal, label: range.startLabel });
-          endpoints.push({ val: range.endVal, label: range.endLabel });
-        }
-      });
-
-      if (endpoints.length === 0) return;
-
-      const uniqueEndpoints = [];
-      const seen = new Set();
-      endpoints.forEach(ep => {
-        if (!seen.has(ep.val)) {
-          seen.add(ep.val);
-          uniqueEndpoints.push(ep);
-        }
-      });
-      uniqueEndpoints.sort((a, b) => a.val - b.val);
-
-      const minVal = uniqueEndpoints[0].val;
-      const maxVal = uniqueEndpoints[uniqueEndpoints.length - 1].val;
-      const valRange = maxVal - minVal;
-      const padding = valRange > 0 ? valRange * 0.15 : 2;
-      const axisMin = minVal - padding;
-      const axisMax = maxVal + padding;
-
-      const getX = (val) => {
-        const margin = 40;
-        return margin + ((val - axisMin) / (axisMax - axisMin)) * (350 - 2 * margin);
-      };
-
-      let svgHtml = '';
-      svgHtml += `<line x1="10" y1="110" x2="340" y2="110" stroke="var(--text-primary)" stroke-width="1.5" />`;
-      svgHtml += `<polygon points="336,106 342,110 336,114" fill="var(--text-primary)" />`;
-
-      uniqueEndpoints.forEach((ep) => {
-        const x = getX(ep.val);
-        svgHtml += `<line x1="${x}" y1="106" x2="${x}" y2="114" stroke="var(--text-primary)" stroke-width="1.5" />`;
-        svgHtml += renderSvgTickLabel(x, 114, ep.label);
-      });
-
-      spec.intervals.forEach((inv, idx) => {
-        const range = parseRange(inv.rangeStr);
-        if (!range) return;
-        
-        const y = 110 - 25 - idx * 22;
-        const x1 = getX(range.startVal);
-        const x2 = getX(range.endVal);
-        const color = inv.color;
-        
-        svgHtml += `<line class="dash-line-${idx}" x1="${x1}" y1="${y + 4}" x2="${x1}" y2="106" stroke="var(--border-subtle)" stroke-width="1" stroke-dasharray="2,2" style="opacity: 0.6;" />`;
-        svgHtml += `<line class="dash-line-${idx}" x1="${x2}" y1="${y + 4}" x2="${x2}" y2="106" stroke="var(--border-subtle)" stroke-width="1" stroke-dasharray="2,2" style="opacity: 0.6;" />`;
-        
-        svgHtml += `<line class="interval-line" data-idx="${idx}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${color}" stroke-width="3.5" stroke-linecap="round" style="cursor: pointer; transition: stroke-width 0.15s;" />`;
-        
-        if (range.startOpen) {
-          svgHtml += `<circle class="interval-endpoint start-pt-${idx}" data-idx="${idx}" cx="${x1}" cy="${y}" r="4" fill="var(--bg-sunken)" stroke="${color}" stroke-width="2.5" style="cursor: pointer;" />`;
-        } else {
-          svgHtml += `<circle class="interval-endpoint start-pt-${idx}" data-idx="${idx}" cx="${x1}" cy="${y}" r="5.5" fill="${color}" style="cursor: pointer;" />`;
-        }
-        
-        if (range.endOpen) {
-          svgHtml += `<circle class="interval-endpoint end-pt-${idx}" data-idx="${idx}" cx="${x2}" cy="${y}" r="4" fill="var(--bg-sunken)" stroke="${color}" stroke-width="2.5" style="cursor: pointer;" />`;
-        } else {
-          svgHtml += `<circle class="interval-endpoint end-pt-${idx}" data-idx="${idx}" cx="${x2}" cy="${y}" r="5.5" fill="${color}" style="cursor: pointer;" />`;
-        }
-        
-        svgHtml += `<text x="${x1 - 10}" y="${y}" font-size="10" fill="${color}" text-anchor="end" dominant-baseline="middle" font-weight="800">${escapeHtml(inv.label)}</text>`;
-      });
-
-      svgHtml += `<line class="interval-overlay" x1="0" y1="110" x2="0" y2="110" stroke="#F59E0B" stroke-width="5.5" stroke-linecap="round" style="display: none; pointer-events: none;" />`;
-      svgHtml += `<circle class="interval-overlay-start" cx="0" cy="110" r="5" fill="#F59E0B" style="display: none; stroke: #FFFFFF; stroke-width: 1.5; pointer-events: none;" />`;
-      svgHtml += `<circle class="interval-overlay-end" cx="0" cy="110" r="5" fill="#F59E0B" style="display: none; stroke: #FFFFFF; stroke-width: 1.5; pointer-events: none;" />`;
-
-      svg.innerHTML = svgHtml;
-
-      spec.intervals.forEach((inv, idx) => {
-        const line = svg.querySelector(`line.interval-line[data-idx="${idx}"]`);
-        const circles = svg.querySelectorAll(`.interval-endpoint[data-idx="${idx}"]`);
-        
-        const showHover = () => {
-          line.setAttribute('stroke-width', '5.5');
-          hoverInfo.style.opacity = '1';
-          hoverInfo.innerHTML = `بازه <span style="color:${inv.color}; font-weight:800;">${escapeHtml(inv.label)}</span>: <span style="direction:ltr; display:inline-block; font-family:var(--font-mono); font-weight:800;">${inv.rangeStr}</span> ${inv.desc ? ` - ${escapeHtml(inv.desc)}` : ''}`;
-        };
-
-        const hideHover = () => {
-          line.setAttribute('stroke-width', '3.5');
-          hoverInfo.style.opacity = '0';
-        };
-
-        line.addEventListener('mouseenter', showHover);
-        line.addEventListener('mouseleave', hideHover);
-        circles.forEach((c) => {
-          c.addEventListener('mouseenter', showHover);
-          c.addEventListener('mouseleave', hideHover);
-        });
-      });
-
-      btnContainer.innerHTML = '';
-      const intervals = spec.intervals;
-      const ops = [];
-
-      if (intervals.length >= 2) {
-        ops.push({
-          label: `${intervals[0].label} ∩ ${intervals[1].label}`,
-          op: 'intersect_0_1',
-          desc: `اشتراک بازه ${intervals[0].label} و ${intervals[1].label}: محدوده‌ای که عضو هر دو بازه باشد.`,
-          calc: () => intersectIntervals(intervals[0], intervals[1])
-        });
-        ops.push({
-          label: `${intervals[0].label} ∪ ${intervals[1].label}`,
-          op: 'union_0_1',
-          desc: `اجتماع بازه ${intervals[0].label} و ${intervals[1].label}: تمام محدوده تحت پوشش هر دو بازه.`,
-          calc: () => unionIntervals(intervals[0], intervals[1])
-        });
-      }
-
-      if (intervals.length >= 3) {
-        ops.push({
-          label: `${intervals[1].label} ∩ ${intervals[2].label}`,
-          op: 'intersect_1_2',
-          desc: `اشتراک بازه ${intervals[1].label} و ${intervals[2].label}: محدوده‌ای که عضو هر دو بازه باشد.`,
-          calc: () => intersectIntervals(intervals[1], intervals[2])
-        });
-        ops.push({
-          label: `${intervals[0].label} ∩ ${intervals[1].label} ∩ ${intervals[2].label}`,
-          op: 'intersect_all',
-          desc: `اشتراک همزمان هر سه بازه: محدوده‌ای از اعداد که در تمام بازه‌های A و B و C حضور دارد.`,
-          calc: () => {
-            const temp = intersectIntervals(intervals[0], intervals[1]);
-            if (!temp) return null;
-            return intersectIntervals(temp, intervals[2]);
-          }
-        });
-      }
-
-      ops.push({
-        label: 'پاک کردن',
-        op: 'clear',
-        isClear: true
-      });
-
-      const renderedBtns = [];
-      ops.forEach((op) => {
-        const btn = document.createElement('button');
-        btn.textContent = op.label;
-        btn.style.cssText = 'padding: 4px 8px; font-size: 10px; border-radius: 8px; border: 1.5px solid var(--border-soft); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-weight: 700; transition: all 0.2s;';
-        
-        if (op.isClear) {
-          btn.style.borderColor = 'var(--color-danger)';
-          btn.style.background = 'var(--color-danger-soft)';
-          btn.style.color = 'var(--color-danger)';
-        }
-
-        btn.addEventListener('click', () => {
-          renderedBtns.forEach((b) => {
-            if (b === btn && !op.isClear) {
-              b.style.background = 'var(--color-primary)';
-              b.style.color = '#FFFFFF';
-              b.style.borderColor = 'var(--color-primary)';
-            } else {
-              const opData = ops.find(o => o.label === b.textContent);
-              if (opData && opData.isClear) {
-                b.style.borderColor = 'var(--color-danger)';
-                b.style.background = 'var(--color-danger-soft)';
-                b.style.color = 'var(--color-danger)';
-              } else {
-                b.style.background = 'var(--bg-card)';
-                b.style.color = 'var(--text-primary)';
-                b.style.borderColor = 'var(--border-soft)';
-              }
-            }
-          });
-
-          const overlayLine = svg.querySelector('.interval-overlay');
-          const overlayStart = svg.querySelector('.interval-overlay-start');
-          const overlayEnd = svg.querySelector('.interval-overlay-end');
-
-          if (op.isClear) {
-            overlayLine.style.display = 'none';
-            overlayStart.style.display = 'none';
-            overlayEnd.style.display = 'none';
-            resultDisplay.style.display = 'none';
-            return;
-          }
-
-          const result = op.calc();
-          if (!result) {
-            overlayLine.style.display = 'none';
-            overlayStart.style.display = 'none';
-            overlayEnd.style.display = 'none';
-            
-            resultDisplay.style.display = 'flex';
-            resultTitle.textContent = op.label;
-            resultSet.textContent = '∅ (تهی)';
-            resultDesc.textContent = 'این عملیات هیچ عضو مشترکی ندارد و پاسخ مجموعه تهی است.';
-            return;
-          }
-
-          resultDisplay.style.display = 'flex';
-          resultTitle.textContent = `عملیات ${op.label}`;
-          resultDesc.textContent = op.desc;
-
-          if (result.isSplit) {
-            resultSet.innerHTML = `x ∈ <span style="direction:ltr; display:inline-block; font-family:var(--font-mono);">${result.rangeStr}</span>`;
-            overlayLine.style.display = 'none';
-            overlayStart.style.display = 'none';
-            overlayEnd.style.display = 'none';
-          } else {
-            resultSet.innerHTML = `x ∈ <span style="direction:ltr; display:inline-block; font-family:var(--font-mono);">${result.rangeStr}</span>`;
-            
-            const ox1 = getX(result.startVal);
-            const ox2 = getX(result.endVal);
-            overlayLine.setAttribute('x1', ox1.toString());
-            overlayLine.setAttribute('x2', ox2.toString());
-            overlayLine.style.display = 'block';
-
-            overlayStart.setAttribute('cx', ox1.toString());
-            if (result.startOpen) {
-              overlayStart.setAttribute('fill', 'var(--bg-sunken)');
-              overlayStart.setAttribute('stroke', '#F59E0B');
-              overlayStart.setAttribute('stroke-width', '2');
-            } else {
-              overlayStart.setAttribute('fill', '#F59E0B');
-              overlayStart.setAttribute('stroke', '#FFFFFF');
-              overlayStart.setAttribute('stroke-width', '1.5');
-            }
-            overlayStart.style.display = 'block';
-
-            overlayEnd.setAttribute('cx', ox2.toString());
-            if (result.endOpen) {
-              overlayEnd.setAttribute('fill', 'var(--bg-sunken)');
-              overlayEnd.setAttribute('stroke', '#F59E0B');
-              overlayEnd.setAttribute('stroke-width', '2');
-            } else {
-              overlayEnd.setAttribute('fill', '#F59E0B');
-              overlayEnd.setAttribute('stroke', '#FFFFFF');
-              overlayEnd.setAttribute('stroke-width', '1.5');
-            }
-            overlayEnd.style.display = 'block';
-          }
-        });
-
-        btnContainer.appendChild(btn);
-        renderedBtns.push(btn);
-      });
+        initInteractiveInterval(card);
     });
   }
 
@@ -8885,9 +8825,23 @@ export async function renderAI(container) {
     }
 
     const bubble = document.createElement('div');
+    bubble.style.animation = 'slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+    
+    // Make sure slideUp animation exists
+    if (!document.getElementById('ai-animations')) {
+      const style = document.createElement('style');
+      style.id = 'ai-animations';
+      style.textContent = `
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
     
     if (sender === 'user') {
-      bubble.style.cssText = 'align-self:flex-end; background:var(--color-primary); color:#FFFFFF; padding:var(--space-3) var(--space-4); border-radius:16px 16px 4px 16px; max-width:80%; line-height:1.6; font-size:var(--text-body); font-weight:600; box-shadow:0 2px 4px rgba(61, 107, 255, 0.15); word-break: break-word; display:flex; flex-direction:column; gap:var(--space-2);';
+      bubble.style.cssText = 'align-self:flex-end; background:linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color:#FFFFFF; padding:var(--space-3) var(--space-4); border-radius:24px 24px 4px 24px; max-width:80%; line-height:1.6; font-size:var(--text-body); font-weight:500; box-shadow:0 8px 24px rgba(47, 95, 168, 0.25); word-break: break-word; display:flex; flex-direction:column; gap:var(--space-2); position:relative;';
       
       if (attachments && Array.isArray(attachments) && attachments.length > 0) {
         const attContainer = document.createElement('div');
@@ -8974,7 +8928,7 @@ export async function renderAI(container) {
       bubble.style.cssText = 'align-self:center; background:var(--color-danger-soft); border:1px solid var(--color-danger); color:var(--color-danger); padding:var(--space-3) var(--space-4); border-radius:12px; max-width:90%; font-size:var(--text-caption); text-align:center; font-weight:700;';
       bubble.textContent = cleanText;
     } else {
-      bubble.style.cssText = 'align-self:flex-start; background:var(--bg-card); border:1px solid var(--border-subtle); padding:var(--space-3) var(--space-4); border-radius:16px 16px 16px 4px; max-width:80%; line-height:1.7; font-size:var(--text-body); color:var(--text-primary); box-shadow:var(--shadow-card); word-break: break-word; min-width:0;';
+      bubble.style.cssText = 'align-self:flex-start; background:color-mix(in srgb, var(--bg-card) 60%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.2); padding:var(--space-4); border-radius:24px 24px 24px 4px; max-width:85%; line-height:1.8; font-size:var(--text-body); color:var(--text-primary); box-shadow:0 8px 32px rgba(0,0,0,0.06); word-break: break-word; min-width:0; margin-bottom:var(--space-2);';
       
       const textNode = document.createElement('div');
       textNode.style.cssText = 'word-break:break-word; overflow-wrap:break-word; width:100%;';
@@ -9709,9 +9663,8 @@ export async function renderSettings(container) {
   });
   const langField = createSelectField({
     label: 'زبان تلفظ صوتی',
-    value: ttsLang,
+    value: ttsLang === 'fa-IR' ? 'en-US' : ttsLang, // fallback if they had Persian saved
     options: [
-      { value: 'fa-IR', label: 'فارسی (fa-IR)' },
       { value: 'en-US', label: 'انگلیسی (en-US - لهجه آمریکایی)' },
       { value: 'en-GB', label: 'انگلیسی (en-GB - لهجه بریتانیایی)' },
     ],
@@ -9726,9 +9679,9 @@ export async function renderSettings(container) {
       await db.setSetting('tts_lang', langSelect.value);
       showStatusMessage(ttsContainer, 'تنظیمات صوتی با موفقیت ذخیره شد.', 'success');
       
-      const ok = await speak(langSelect.value === 'fa-IR' ? 'تنظیمات صوتی با موفقیت ذخیره شد.' : 'Voice settings saved.', langSelect.value);
+      const ok = await speak('Voice settings saved.', langSelect.value);
       if (!ok) {
-        showStatusMessage(ttsContainer, 'تنظیمات ذخیره شد اما پخش صدای آزمایشی ناموفق بود. اتصال اینترنت را بررسی کنید یا کلید Gemini را در بخش «هوش مصنوعی و صدا» وارد نمایید.', 'error');
+        showStatusMessage(ttsContainer, 'تنظیمات ذخیره شد اما پخش صدای آزمایشی ناموفق بود. اتصال اینترنت را بررسی کنید.', 'error');
       }
     }
   });

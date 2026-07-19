@@ -408,7 +408,7 @@ export async function renderExamSession(container, categoryId = null) {
         card,
         type: 'choice',
         index,
-        prompt: `کدام گزینه پاسخ صحیح برای عبارت زیر است؟\n\n« ${qText} »`,
+        prompt: qText,
         options,
         correctOptionIndex: correctIdx,
         correctAnswer: aText,
@@ -432,7 +432,7 @@ export async function renderExamSession(container, categoryId = null) {
         card,
         type: 'tf',
         index,
-        prompt: `آیا گزاره پیشنهادی زیر با عبارت اصلی مطابقت دارد؟\n\nعبارت اصلی:\n« ${qText} »\n\nگزاره پیشنهادی:\n« ${displayAnswer} »`,
+        prompt: `${qText}\n\n(پیشنهاد: ${displayAnswer})`,
         correctAnswer: match ? 'true' : 'false',
         matchStateText: match ? 'بله، صحیح است' : 'خیر، غلط است',
         correctAnswerText: aText,
@@ -448,7 +448,7 @@ export async function renderExamSession(container, categoryId = null) {
           card,
           type: 'blank',
           index,
-          prompt: `صورت سوال:\n« ${qText} »\n\nلطفاً بخش جای خالی را تکمیل کنید.`,
+          prompt: qText,
           correctAnswer: aText,
           fullAnswer: aText,
           explanation: `پاسخ صحیح جای خالی:\n« ${aText} »`
@@ -459,7 +459,7 @@ export async function renderExamSession(container, categoryId = null) {
           card,
           type: 'blank',
           index,
-          prompt: `صورت سوال:\n« ${qText} »\n\nلطفاً کلمه یا عبارت خالی زیر را تکمیل کنید:\n\n« ${maskedText} »`,
+          prompt: `${qText}\n\n${maskedText}`,
           correctAnswer: answer,
           fullAnswer: aText,
           explanation: `عبارت کامل پاسخ:\n« ${aText} »`
@@ -471,7 +471,7 @@ export async function renderExamSession(container, categoryId = null) {
         card,
         type: 'short',
         index,
-        prompt: `لطفاً پاسخ تشریحی خود را برای سوال زیر بنویسید (یا دکمه میکروفون را بزنید و بگویید):\n\n« ${qText} »`,
+        prompt: qText,
         correctAnswer: aText,
         explanation: `پاسخ ثبت شده برای این سوال:\n« ${aText} »`
       };

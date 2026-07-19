@@ -23,8 +23,9 @@
   gap: var(--space-1);
 }
 .topbar-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: var(--font-heading);
   color: var(--text-primary);
 }
 
@@ -81,6 +82,11 @@
 .nav-item.active .ai-custom-icon {
   transform: scale(1.12);
   stroke-width: 2.3px;
+}
+
+.nav-label {
+  font-family: var(--font-heading);
+  font-size: 13px;
 }
 
 .icon-btn {

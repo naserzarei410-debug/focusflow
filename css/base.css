@@ -100,3 +100,10 @@ html.reduce-motion *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
 }
+
+h1, h2, h3, h4, h5, h6,
+.topbar-title,
+.font-heading {
+  font-family: var(--font-heading) !important;
+}
+

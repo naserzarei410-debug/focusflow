@@ -67,6 +67,7 @@ export function createAiConversationModel(data = {}) {
   return {
     id: data.id || newId(),
     categoryId: data.categoryId || null,
+    topic: data.topic || 'چت جدید',
     messages: data.messages || [],
     createdAt: data.createdAt || ts,
     updatedAt: ts,

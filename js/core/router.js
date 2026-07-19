@@ -84,9 +84,19 @@ function render(routeName, param) {
 
   const backBtn = document.getElementById('back-btn');
   const themeBtn = document.getElementById('theme-toggle');
+  const searchBtn = document.getElementById('search-btn');
+  const menuBtn = document.getElementById('menu-btn');
   const isSecondary = SECONDARY_ROUTES.has(routeName);
   if (backBtn) backBtn.classList.toggle('hidden', !isSecondary);
   if (themeBtn) themeBtn.classList.toggle('hidden', isSecondary);
+
+  if (routeName === 'ai') {
+    if (searchBtn) searchBtn.classList.add('hidden');
+    if (menuBtn) menuBtn.classList.remove('hidden');
+  } else {
+    if (searchBtn) searchBtn.classList.remove('hidden');
+    if (menuBtn) menuBtn.classList.add('hidden');
+  }
 }
 
 function initRouter() {

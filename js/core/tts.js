@@ -1,6 +1,7 @@
 
 
 import { db } from './db.js';
+import { showToast } from './ui.js';
 
 let activeAudio = null;
 let activeAudioToken = 0;
@@ -232,6 +233,12 @@ export async function speak(text, lang) {
 
   const cleanText = String(text).trim();
 
+  // TTS Language check: Reject pure Persian text
+  if (detectLanguage(cleanText) === 'fa-IR') {
+    showToast('تلفظ صوتی برای زبان فارسی پشتیبانی نمی‌شود.', 'error');
+    return false;
+  }
+
   try {
     const savedRateStr = await db.getSetting('tts_speed', '0.95');
     const rate = parseFloat(savedRateStr) || 0.95;
@@ -239,13 +246,11 @@ export async function speak(text, lang) {
     // Auto-detect language if not explicitly provided
     let detectedLang = lang;
     if (!detectedLang) {
-      detectedLang = detectLanguage(cleanText);
-      // If it's English, check if there's a custom preferred language setting saved
-      if (detectedLang === 'en-US') {
-        const savedLang = await db.getSetting('tts_lang', '');
-        if (savedLang) {
-          detectedLang = savedLang;
-        }
+      detectedLang = 'en-US'; // Default to English now
+      // Check if there's a custom preferred language setting saved
+      const savedLang = await db.getSetting('tts_lang', '');
+      if (savedLang) {
+        detectedLang = savedLang;
       }
     }
 

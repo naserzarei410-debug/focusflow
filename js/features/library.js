@@ -6,7 +6,7 @@ import { categoryRepository, flashcardRepository, aiConversationRepository, exam
 import { router } from '../core/router.js';
 import { createCategoryModel } from '../core/models.js';
 
-const LONG_PRESS_MS = 2000;
+const LONG_PRESS_MS = 600;
 
 export async function renderLibrary(container) {
   container.innerHTML = '';
