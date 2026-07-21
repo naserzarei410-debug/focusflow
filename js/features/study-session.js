@@ -2,10 +2,11 @@
 
 import { createButton, createCard, createEmptyState, openDialog, createProgressBar, escapeHtml, escapeAttr, renderFractionsInText, showToast } from '../core/ui.js';
 import { getStudyQueues, StudySession, calculateStreak } from '../core/study.js';
-import { Rating, schedule } from '../core/fsrs.js';
+import { Rating, State, schedule } from '../core/fsrs.js';
 import { speak, isSpeechSupported } from '../core/tts.js';
 import { router } from '../core/router.js';
 import { categoryRepository, flashcardRepository } from '../core/repositories.js';
+import { openAiExplanationBottomSheet } from './ai-explanation.js';
 
 export async function renderStudySession(container, categoryId = null, forceAll = false) {
   // Start loading screen
@@ -169,13 +170,13 @@ export async function renderStudySession(container, categoryId = null, forceAll 
     // Front Face
     const frontFace = document.createElement('div');
     frontFace.className = 'flip-face';
-    frontFace.style.cssText = 'display:flex;flex-direction:column;justify-content:center;align-items:center;padding:var(--space-4);text-align:center;overflow:hidden;';
+    frontFace.style.cssText = 'text-align:center;';
     frontFace.innerHTML = renderFaceContent(currentCard.frontContent, currentCard.frontImage);
     
     // Back Face
     const backFace = document.createElement('div');
     backFace.className = 'flip-face flip-face-back';
-    backFace.style.cssText = 'display:flex;flex-direction:column;justify-content:center;align-items:center;padding:var(--space-4);text-align:center;overflow:hidden;';
+    backFace.style.cssText = 'text-align:center;';
     backFace.innerHTML = renderFaceContent(currentCard.backContent, currentCard.backImage);
 
     innerCard.append(frontFace, backFace);
@@ -185,6 +186,20 @@ export async function renderStudySession(container, categoryId = null, forceAll 
     flipCard.addEventListener('click', flipTheCard);
 
     // Create stable utility buttons outside of the 3D transformed containers
+    const aiExplainBtn = document.createElement('button');
+    aiExplainBtn.className = 'icon-btn';
+    aiExplainBtn.setAttribute('aria-label', 'توضیح با هوش مصنوعی');
+    aiExplainBtn.style.cssText = 'width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 1.5px solid var(--border-soft); color: var(--color-primary); cursor: pointer; transition: transform var(--duration-fast), background-color var(--duration-fast);';
+    aiExplainBtn.innerHTML = '<span class="material-symbols-rounded">psychology</span>';
+    aiExplainBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const frontText = textOf(currentCard.frontContent);
+      const backText = textOf(currentCard.backContent);
+      openAiExplanationBottomSheet(frontText, backText);
+    });
+    aiExplainBtn.addEventListener('mouseenter', () => { aiExplainBtn.style.transform = 'scale(1.08)'; aiExplainBtn.style.backgroundColor = 'var(--bg-card-hover)'; });
+    aiExplainBtn.addEventListener('mouseleave', () => { aiExplainBtn.style.transform = 'scale(1.0)'; aiExplainBtn.style.backgroundColor = 'var(--bg-card)'; });
+
     const speakerBtn = document.createElement('button');
     speakerBtn.className = 'icon-btn';
     speakerBtn.setAttribute('aria-label', 'تلفظ با صدا');
@@ -217,7 +232,7 @@ export async function renderStudySession(container, categoryId = null, forceAll 
     bookmarkBtn.addEventListener('mouseenter', () => { bookmarkBtn.style.transform = 'scale(1.08)'; bookmarkBtn.style.backgroundColor = 'var(--bg-card-hover)'; });
     bookmarkBtn.addEventListener('mouseleave', () => { bookmarkBtn.style.transform = 'scale(1.0)'; bookmarkBtn.style.backgroundColor = 'var(--bg-card)'; });
 
-    utilityActionRow.append(speakerBtn, bookmarkBtn);
+    utilityActionRow.append(aiExplainBtn, speakerBtn, bookmarkBtn);
 
     // Setup first view controls: Show Answer button
     const showAnswerBtn = createButton({
@@ -313,8 +328,16 @@ export async function renderStudySession(container, categoryId = null, forceAll 
         // Record review using FSRS StudySession engine and retrieve the updated card
         const { card: updatedCard } = await session.submitReview(currentCard, rating);
 
-        if (rating === Rating.Again) {
-          // Push the updated card back to the end of the session cards so it is studied again in this active session with its new state
+        // A card that hasn't graduated out of Learning/Relearning yet is on
+        // a short minute-based step (see fsrs.js), not a multi-day FSRS
+        // interval — so it needs to come back within THIS session, not the
+        // next one. This used to only happen for "دوباره" (Again), so a new
+        // card rated "سخت" (Hard) — which also stays in Learning — silently
+        // vanished from the session instead of resurfacing a few minutes
+        // later as intended.
+        const stillLearning = updatedCard.fsrsState &&
+          (updatedCard.fsrsState.state === State.Learning || updatedCard.fsrsState.state === State.Relearning);
+        if (stillLearning) {
           sessionCards.push(updatedCard);
         }
 
@@ -367,7 +390,9 @@ export async function renderStudySession(container, categoryId = null, forceAll 
     const rawText = escapeHtml(textOf(contentBlocks)) || '';
     const text = rawText ? renderFractionsInText(rawText) : '<span style="color:var(--text-tertiary)">(بدون متن)</span>';
     const imgHtml = image ? `<img src="${escapeAttr(image)}" alt="" class="fc-face-image" style="max-height:160px;margin-bottom:var(--space-2);border-radius:var(--radius-btn);object-fit:contain;">` : '';
-    return `${imgHtml}<div class="fc-face-text" style="font-size:var(--text-title);font-weight:700;line-height:var(--lh-normal);">${text}</div>`;
+    // Wrapped in .fc-face-scroll: this plain (non-3D) inner element is what
+    // actually clips/scrolls the content. See css/components.css for why.
+    return `<div class="fc-face-scroll">${imgHtml}<div class="fc-face-text" style="font-size:var(--text-title);font-weight:700;line-height:var(--lh-normal);">${text}</div></div>`;
   }
 
   function textOf(contentBlocks) {

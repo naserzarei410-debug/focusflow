@@ -2,7 +2,7 @@
 import {
   createButton, createSearchBar, createTextArea, createEmptyState,
   createSkeletonList, openBottomSheet, openDialog, escapeHtml, escapeAttr,
-  showToast, renderFractionsInText,
+  showToast, renderFractionsInText, createSelectField, createTextField,
 } from '../core/ui.js';
 import { categoryRepository, flashcardRepository } from '../core/repositories.js';
 import { createFlashcardModel } from '../core/models.js';
@@ -28,6 +28,35 @@ async function recalcCategoryCount(categoryId) {
   const cards = await flashcardRepository.getByIndex('categoryId', categoryId);
   const activeCount = cards.filter((c) => !c.deleted).length;
   await categoryRepository.update(categoryId, { totalCards: activeCount });
+}
+
+// Basic guard so a phone-camera photo doesn't get base64-encoded straight
+// into storage. Storage has no hard size limit, but multi-MB images
+// bloat every read of the category's card list and make backup/export
+// files huge; a few MB is already excessive for a flashcard image.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB
+
+// Builds the small "action" cards shown above the flashcard list (spaced
+// repetition CTA, practice mode, exam mode). These four cards used to each
+// repeat ~15 lines of near-identical DOM setup (card wrapper, text column,
+// button, appending) with only text/colors differing — centralizing the
+// shell here means a future layout tweak only needs to happen once, and a
+// bug in the shell only needs to be fixed once too.
+function buildActionCard({ cardStyle, textColChildren, btnLabel, btnIcon, btnVariant = 'secondary', btnHeight, btnExtraStyle, onClick }) {
+  const card = document.createElement('div');
+  card.className = 'ds-card';
+  card.style.cssText = cardStyle;
+
+  const textCol = document.createElement('div');
+  textCol.style.cssText = 'display:flex; flex-direction:column; gap:4px; text-align:right;';
+  textCol.append(...textColChildren);
+
+  const btn = createButton({ label: btnLabel, icon: btnIcon, variant: btnVariant, onClick });
+  if (btnHeight) btn.style.height = btnHeight;
+  if (btnExtraStyle) btn.style.cssText += btnExtraStyle;
+
+  card.append(textCol, btn);
+  return card;
 }
 
 export async function renderCategoryWorkspace(container, categoryId) {
@@ -96,123 +125,83 @@ export async function renderCategoryWorkspace(container, categoryId) {
 
     fsrsHeader.innerHTML = '';
     if (totalDue > 0 || totalNew > 0) {
-      const studyCard = document.createElement('div');
-      studyCard.className = 'ds-card';
-      studyCard.style.cssText = 'background:var(--color-primary-soft); border:1.5px solid var(--color-primary); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2);';
-      
-      const textCol = document.createElement('div');
-      textCol.style.cssText = 'display:flex; flex-direction:column; gap:4px; text-align:right;';
-      
       const dueRow = document.createElement('div');
       dueRow.style.cssText = 'font-size:var(--text-caption); color:var(--text-primary); font-weight:700;';
       dueRow.innerHTML = `کارت برای مرور : <span style="color:var(--color-primary); font-weight:800;">${totalDue.toLocaleString('fa-IR')}</span>`;
-      
+
       const newRow = document.createElement('div');
       newRow.style.cssText = 'font-size:var(--text-caption); color:var(--text-primary); font-weight:700;';
       newRow.innerHTML = `کارت جدید : <span style="color:var(--color-secondary); font-weight:800;">${totalNew.toLocaleString('fa-IR')}</span>`;
-      
-      textCol.append(dueRow, newRow);
 
-      const studyBtn = createButton({
-        label: 'مرور',
-        icon: 'play_arrow',
-        variant: 'primary',
-        onClick: () => router.navigate('study', categoryId)
-      });
-      studyBtn.style.height = '42px';
-      
-      studyCard.append(textCol, studyBtn);
-      fsrsHeader.appendChild(studyCard);
+      fsrsHeader.appendChild(buildActionCard({
+        cardStyle: 'background:var(--color-primary-soft); border:1.5px solid var(--color-primary); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2);',
+        textColChildren: [dueRow, newRow],
+        btnLabel: 'مرور',
+        btnIcon: 'play_arrow',
+        btnVariant: 'primary',
+        btnHeight: '42px',
+        onClick: () => router.navigate('study', categoryId),
+      }));
     } else if (active.length > 0) {
-      const studyCard = document.createElement('div');
-      studyCard.className = 'ds-card';
-      studyCard.style.cssText = 'background:var(--bg-card); border:1px dashed var(--border-strong); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2);';
-      
-      const textCol = document.createElement('div');
-      textCol.style.cssText = 'display:flex; flex-direction:column; gap:4px; text-align:right;';
-      
       const title = document.createElement('div');
       title.style.cssText = 'font-weight:700; font-size:var(--text-body); color:var(--text-secondary); display:flex; align-items:center; gap:var(--space-1);';
       title.innerHTML = 'همه کارت‌ها مرور شده‌اند! <span class="material-symbols-rounded" style="font-size:18px; color:var(--color-primary);">auto_awesome</span>';
-      
+
       const sub = document.createElement('div');
       sub.style.cssText = 'font-size:var(--text-caption); color:var(--text-tertiary);';
       sub.textContent = 'کارت‌های این بخش کاملاً به‌روز هستند.';
-      
-      textCol.append(title, sub);
 
-      const studyBtn = createButton({
-        label: 'مرور',
-        icon: 'history',
-        variant: 'secondary',
-        onClick: () => router.navigate('study', categoryId)
-      });
-      studyBtn.style.height = '38px';
-      
-      studyCard.append(textCol, studyBtn);
-      fsrsHeader.appendChild(studyCard);
+      fsrsHeader.appendChild(buildActionCard({
+        cardStyle: 'background:var(--bg-card); border:1px dashed var(--border-strong); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2);',
+        textColChildren: [title, sub],
+        btnLabel: 'مرور',
+        btnIcon: 'history',
+        btnVariant: 'secondary',
+        btnHeight: '38px',
+        onClick: () => router.navigate('study', categoryId),
+      }));
     }
 
     // Render Practice Mode entry card
     if (active.length > 0) {
-      const practiceCard = document.createElement('div');
-      practiceCard.className = 'ds-card';
-      practiceCard.style.cssText = 'background:rgba(245, 158, 11, 0.08); border:1.5px solid var(--color-warning); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-top:var(--space-2);';
-      
-      const pTextCol = document.createElement('div');
-      pTextCol.style.cssText = 'display:flex; flex-direction:column; gap:4px; text-align:right;';
-      
       const pTitle = document.createElement('div');
       pTitle.style.cssText = 'font-weight:800; font-size:var(--text-section); color:var(--text-primary);';
       pTitle.textContent = 'تمرین هوشمند';
-      
+
       const pSub = document.createElement('div');
       pSub.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary);';
       pSub.textContent = 'خودآزمون با سوالات تستی، صحیح/غلط، جای خالی و تشریحی صوتی';
-      
-      pTextCol.append(pTitle, pSub);
 
-      const pBtn = createButton({
-        label: 'تمرین',
-        icon: 'quiz',
-        variant: 'secondary',
-        onClick: () => router.navigate('practice', categoryId)
-      });
-      pBtn.style.cssText += '; border-color: var(--color-warning); color: var(--color-warning); height: 42px; background: var(--bg-card);';
-      
-      practiceCard.append(pTextCol, pBtn);
-      fsrsHeader.appendChild(practiceCard);
+      fsrsHeader.appendChild(buildActionCard({
+        cardStyle: 'background:rgba(245, 158, 11, 0.08); border:1.5px solid var(--color-warning); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-top:var(--space-2);',
+        textColChildren: [pTitle, pSub],
+        btnLabel: 'تمرین',
+        btnIcon: 'quiz',
+        btnVariant: 'secondary',
+        btnExtraStyle: '; border-color: var(--color-warning); color: var(--color-warning); height: 42px; background: var(--bg-card);',
+        onClick: () => router.navigate('practice', categoryId),
+      }));
     }
 
     // Render Exam Mode entry card
     if (active.length > 0) {
-      const examCard = document.createElement('div');
-      examCard.className = 'ds-card';
-      examCard.style.cssText = 'background:rgba(108, 92, 231, 0.08); border:1.5px solid var(--color-secondary); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-top:var(--space-2);';
-      
-      const eTextCol = document.createElement('div');
-      eTextCol.style.cssText = 'display:flex; flex-direction:column; gap:4px; text-align:right;';
-      
       const eTitle = document.createElement('div');
       eTitle.style.cssText = 'font-weight:800; font-size:var(--text-section); color:var(--text-primary);';
       eTitle.textContent = 'شبیه‌ساز آزمون';
-      
+
       const eSub = document.createElement('div');
       eSub.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary);';
       eSub.textContent = 'سنجش واقعی دانش بدون راهنما و در زمان مشخص با کارنامه تحلیلی تفصیلی';
-      
-      eTextCol.append(eTitle, eSub);
 
-      const eBtn = createButton({
-        label: 'آزمون',
-        icon: 'assignment',
-        variant: 'secondary',
-        onClick: () => router.navigate('exam', categoryId)
-      });
-      eBtn.style.cssText += '; border-color: var(--color-secondary); color: var(--color-secondary); height: 42px; background: var(--bg-card);';
-      
-      examCard.append(eTextCol, eBtn);
-      fsrsHeader.appendChild(examCard);
+      fsrsHeader.appendChild(buildActionCard({
+        cardStyle: 'background:rgba(108, 92, 231, 0.08); border:1.5px solid var(--color-secondary); padding:var(--space-3); border-radius:var(--radius-card); display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); margin-top:var(--space-2);',
+        textColChildren: [eTitle, eSub],
+        btnLabel: 'آزمون',
+        btnIcon: 'assignment',
+        btnVariant: 'secondary',
+        btnExtraStyle: '; border-color: var(--color-secondary); color: var(--color-secondary); height: 42px; background: var(--bg-card);',
+        onClick: () => router.navigate('exam', categoryId),
+      }));
     }
 
     listEl.innerHTML = '';
@@ -368,7 +357,10 @@ export async function renderCategoryWorkspace(container, categoryId) {
   function renderFace(contentBlocks, image) {
     const text = renderFractionsInText(escapeHtml(textOf(contentBlocks))) || '<span style="color:var(--text-tertiary)">(بدون متن)</span>';
     const img = image ? `<img src="${escapeAttr(image)}" alt="" class="fc-face-image">` : '';
-    return `${img}<div class="fc-face-text">${text}</div>`;
+    // Wrapped in .fc-face-scroll: a plain (non-3D) inner element that
+    // actually clips/scrolls the content, so long pasted text scrolls
+    // instead of spilling out and overlapping the buttons below.
+    return `<div class="fc-face-scroll">${img}<div class="fc-face-text">${text}</div></div>`;
   }
 
   function openEditor(existing = null) {
@@ -392,18 +384,70 @@ export async function renderCategoryWorkspace(container, categoryId) {
       rows: 1,
     });
 
+    // --- Quiz answer-type authoring (fixes options being pulled from
+    // unrelated flashcards during practice/exam). The user picks how this
+    // card should be quizzed and writes the wrong answer(s) themself.
+    const answerTypeField = createSelectField({
+      label: 'نوع سوال آزمون/تمرین برای این کارت (اختیاری)',
+      options: [
+        { value: 'auto', label: 'پیش‌فرض (تصادفی، بدون گزینه‌های اختصاصی)' },
+        { value: 'choice', label: 'چند گزینه‌ای (۴ گزینه‌ای)' },
+        { value: 'tf', label: 'صحیح / غلط' },
+        { value: 'blank', label: 'جای خالی' },
+      ],
+      value: existing?.answerType || 'auto',
+      hint: 'اگر «پیش‌فرض» را انتخاب کنید، سیستم مثل قبل ممکن است گزینه‌های اشتباه را از سوال‌های دیگر بسازد.',
+      onChange: () => updateAnswerTypeVisibility(),
+    });
+
+    const existingChoiceOptions = existing?.choiceOptions || [];
+    const choiceOptionsWrap = document.createElement('div');
+    choiceOptionsWrap.style.cssText = 'display:flex;flex-direction:column;gap:var(--space-2);';
+    const choiceHint = document.createElement('div');
+    choiceHint.className = 'ds-field-label';
+    choiceHint.textContent = 'گزینه‌های غلط (پاسخ درست همان «پشت کارت» است):';
+    const choiceInputs = [0, 1, 2].map((i) => createTextField({
+      label: `گزینه غلط ${['اول', 'دوم', 'سوم'][i]}`,
+      placeholder: 'متن گزینه اشتباه…',
+      value: existingChoiceOptions[i] || '',
+    }));
+    choiceOptionsWrap.append(choiceHint, ...choiceInputs);
+
+    const tfWrap = createTextArea({
+      label: 'گزاره نادرست (نسخه غلط این عبارت، برای حالت صحیح/غلط)',
+      placeholder: 'مثلاً اگر پاسخ درست «پاریس» است، اینجا یک پاسخ غلط مثل «لندن» را بنویسید…',
+      value: existing?.falseStatement || '',
+      rows: 2,
+    });
+
+    function updateAnswerTypeVisibility() {
+      const val = answerTypeField.value;
+      choiceOptionsWrap.style.display = val === 'choice' ? 'flex' : 'none';
+      tfWrap.style.display = val === 'tf' ? 'block' : 'none';
+    }
+
     const errorMsg = document.createElement('div');
     errorMsg.style.cssText = 'color:var(--color-danger);font-size:var(--text-caption);display:none;';
     errorMsg.textContent = 'متن روی کارت نمی‌تواند خالی باشد.';
 
+    // Guards against a fast double-tap firing this handler twice — without
+    // it, a double-tap on "ساخت فلش‌کارت" created two identical flashcards.
+    let saving = false;
+
     const saveBtn = createButton({
       label: isEdit ? 'ذخیره تغییرات' : 'ساخت فلش‌کارت',
       onClick: async () => {
+        if (saving) return;
+
         const frontText = frontField.input.value.trim();
         if (!frontText) { errorMsg.style.display = 'block'; return; }
         errorMsg.style.display = 'none';
 
         const tags = tagsField.input.value.split(',').map((t) => t.trim()).filter(Boolean);
+        const answerType = answerTypeField.value || 'auto';
+        const choiceOptions = choiceInputs
+          .map((f) => f.input.value.trim())
+          .filter(Boolean);
         const payload = {
           categoryId,
           frontContent: [{ type: 'text', value: frontText }],
@@ -411,27 +455,44 @@ export async function renderCategoryWorkspace(container, categoryId) {
           frontImage: frontImageData,
           backImage: backImageData,
           tags,
+          answerType,
+          choiceOptions: answerType === 'choice' ? choiceOptions : [],
+          falseStatement: answerType === 'tf' ? tfWrap.input.value.trim() : '',
         };
 
-        if (isEdit) {
-          await flashcardRepository.update(existing.id, payload);
-          await recalcCategoryCount(categoryId);
-          sheet.close();
-          refresh();
-        } else {
-          await flashcardRepository.create(createFlashcardModel(payload));
-          await recalcCategoryCount(categoryId);
-          refresh();
-          
-          frontField.input.value = '';
-          backField.input.value = '';
-          tagsField.input.value = '';
-          frontImageData = null;
-          backImageData = null;
-          content.querySelectorAll('.fc-image-remove').forEach(btn => btn.click());
-          
-          frontField.input.focus();
-          showToast('کارت جدید اضافه شد');
+        saving = true;
+        saveBtn.disabled = true;
+        try {
+          if (isEdit) {
+            await flashcardRepository.update(existing.id, payload);
+            await recalcCategoryCount(categoryId);
+            sheet.close();
+            refresh();
+          } else {
+            await flashcardRepository.create(createFlashcardModel(payload));
+            await recalcCategoryCount(categoryId);
+            refresh();
+
+            frontField.input.value = '';
+            backField.input.value = '';
+            tagsField.input.value = '';
+            answerTypeField.value = 'auto';
+            choiceInputs.forEach((f) => { f.input.value = ''; });
+            tfWrap.input.value = '';
+            updateAnswerTypeVisibility();
+            frontImageData = null;
+            backImageData = null;
+            content.querySelectorAll('.fc-image-remove').forEach(btn => btn.click());
+
+            frontField.input.focus();
+            showToast('کارت جدید اضافه شد');
+          }
+        } catch (err) {
+          console.error('Failed to save flashcard', err);
+          showToast('ذخیره فلش‌کارت با خطا مواجه شد. دوباره تلاش کنید.', 'error');
+        } finally {
+          saving = false;
+          saveBtn.disabled = false;
         }
       },
     });
@@ -440,7 +501,8 @@ export async function renderCategoryWorkspace(container, categoryId) {
     actionsRow.style.cssText = 'display:flex;gap:var(--space-2);justify-content:flex-end;margin-top:var(--space-2);';
     actionsRow.append(cancelBtn, saveBtn);
 
-    content.append(frontField, frontImageRow, backField, backImageRow, tagsField, errorMsg, actionsRow);
+    content.append(frontField, frontImageRow, backField, backImageRow, tagsField, answerTypeField, choiceOptionsWrap, tfWrap, errorMsg, actionsRow);
+    updateAnswerTypeVisibility();
 
     const sheet = openBottomSheet({ title: isEdit ? 'ویرایش فلش‌کارت' : 'فلش‌کارت جدید', content });
     frontField.input.focus();
@@ -487,6 +549,11 @@ export async function renderCategoryWorkspace(container, categoryId) {
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
       if (!file) return;
+      if (file.size > MAX_IMAGE_BYTES) {
+        showToast('حجم تصویر باید کمتر از ۴ مگابایت باشد.', 'error');
+        fileInput.value = '';
+        return;
+      }
       const dataUrl = await fileToDataUrl(file);
       onChange(dataUrl);
       renderPreview(dataUrl);

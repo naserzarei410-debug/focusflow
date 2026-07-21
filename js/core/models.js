@@ -42,6 +42,20 @@ export function createFlashcardModel(data = {}) {
     favorite: data.favorite ?? false,
     difficulty: data.difficulty ?? 0,
     tags: data.tags || [],
+    // Quiz/exam answer authoring (Section: practice & exam question types).
+    // 'auto' = system decides (old behaviour: random type, blank only for
+    // cloze cards). 'choice' | 'tf' | 'blank' = the user (or the AI, when
+    // generating cards) has explicitly picked how this card should be
+    // quizzed, and supplied the options/false-statement below so the
+    // wrong answers always relate to THIS card instead of being borrowed
+    // from unrelated flashcards in the category.
+    answerType: data.answerType || 'auto',
+    // Up to 3 user- or AI-authored wrong options for multiple-choice
+    // questions. The correct option is always backContent.
+    choiceOptions: data.choiceOptions || [],
+    // A user- or AI-authored false version of the statement, used as the
+    // "wrong" proposition for true/false questions about this card.
+    falseStatement: data.falseStatement || '',
     createdAt: data.createdAt || ts,
     updatedAt: ts,
     reviewCount: data.reviewCount ?? 0,

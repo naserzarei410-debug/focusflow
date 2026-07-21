@@ -56,7 +56,7 @@ import { theme as themeApi } from '../core/theme.js';
 import {
   createButton, createCard, openDialog, openBottomSheet, showToast,
   createTextField, createTextArea, createSearchBar, createSkeletonList,
-  createProgressBar, createProgressRing, createLoadingInline,
+  createProgressBar, createProgressRing, createLoadingInline, createTypingIndicator,
   createErrorState, createEmptyState, renderFractionsInText, createSelectField,
   renderMathSegment,
 } from '../core/ui.js';
@@ -565,18 +565,10 @@ async function startPdfEngineFlow(categories) {
   const content = document.createElement('div');
   content.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
 
-  const selectLabel = document.createElement('label');
-  selectLabel.className = 'input-label';
-  selectLabel.textContent = 'انتخاب دسته هدف:';
-  
-  const select = document.createElement('select');
-  select.className = 'text-input';
-  select.style.cssText = 'margin-bottom: var(--space-2);';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat.id;
-    opt.textContent = cat.title;
-    select.appendChild(opt);
+  const select = createSelectField({
+    label: 'انتخاب دسته هدف:',
+    options: categories.map((cat) => ({ value: cat.id, label: cat.title })),
+    value: categories[0].id,
   });
 
   const uploadBox = document.createElement('div');
@@ -615,7 +607,7 @@ async function startPdfEngineFlow(categories) {
     handleFileSelected();
   });
 
-  content.append(selectLabel, select, uploadBox);
+  content.append(select, uploadBox);
 
   const dialogOverlay = openDialog({
     title: 'تولید کارت از فایل PDF',
@@ -638,7 +630,7 @@ async function startPdfEngineFlow(categories) {
       <div class="dialog-content" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-3);">
         <div class="spinner" style="width: 48px; height: 48px;"></div>
         <h3 id="pdf-loading-text" style="font-size: 16px; font-weight: 700; color: var(--text-primary);">در حال استخراج متن از PDF...</h3>
-        <p style="font-size: 13px; color: var(--text-secondary);">این فرآیند به صورت ۱۰۰٪ محلی در مرورگر شما انجام می‌شود.</p>
+        <p style="font-size: 13px; color: var(--text-secondary);">اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.</p>
       </div>
     `;
     document.body.appendChild(loadingOverlay);
@@ -777,12 +769,23 @@ function openApprovalDialog(initialCards, categoryId) {
             const backText = card.back || card.answer || '';
             if (!frontText.trim()) continue;
 
+            const wrongOptions = Array.isArray(card.wrongOptions)
+              ? card.wrongOptions.map((s) => (s || '').toString().trim()).filter(Boolean).slice(0, 3)
+              : [];
+            const falseStatement = (card.falseStatement || '').toString().trim();
+
             const newCard = createFlashcardModel({
               categoryId,
               frontContent: [{ type: 'text', value: frontText.trim() }],
               backContent: [{ type: 'text', value: backText.trim() }],
               source: 'ai_pdf',
-              aiGenerated: true
+              aiGenerated: true,
+              // Use the AI's own wrong options for multiple-choice quizzing
+              // on this card, instead of borrowing distractors from other,
+              // unrelated cards later during practice/exam.
+              answerType: wrongOptions.length > 0 ? 'choice' : 'auto',
+              choiceOptions: wrongOptions,
+              falseStatement,
             });
             await flashcardRepository.create(newCard);
           }
@@ -827,16 +830,10 @@ async function openManualCardDialog(categories) {
   const content = document.createElement('div');
   content.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
 
-  const selectLabel = document.createElement('label');
-  selectLabel.className = 'input-label';
-  selectLabel.textContent = 'انتخاب دسته:';
-  const select = document.createElement('select');
-  select.className = 'text-input';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat.id;
-    opt.textContent = cat.title;
-    select.appendChild(opt);
+  const select = createSelectField({
+    label: 'انتخاب دسته:',
+    options: categories.map((cat) => ({ value: cat.id, label: cat.title })),
+    value: categories[0].id,
   });
 
   const frontGroup = document.createElement('div');
@@ -858,7 +855,7 @@ async function openManualCardDialog(categories) {
   backInput.rows = 3;
   backGroup.append(backLabel, backInput);
 
-  content.append(selectLabel, select, frontGroup, backGroup);
+  content.append(select, frontGroup, backGroup);
 
   openDialog({
     title: 'ایجاد فلش‌کارت دستی',
@@ -873,7 +870,11 @@ async function openManualCardDialog(categories) {
           const front = frontInput.value.trim();
           const back = backInput.value.trim();
           const catId = select.value;
-          if (!front || !back) return;
+          if (!front || !back) {
+            showToast('لطفاً هر دو طرف کارت (پرسش و پاسخ) را پر کنید.', 'error');
+            (!front ? frontInput : backInput).focus();
+            return;
+          }
 
           const newCard = createFlashcardModel({
             categoryId: catId,
@@ -951,7 +952,11 @@ function openNewCategoryDialog() {
         variant: 'primary',
         onClick: async () => {
           const title = titleInput.value.trim();
-          if (!title) return;
+          if (!title) {
+            showToast('لطفاً عنوان دسته را وارد کنید.', 'error');
+            titleInput.focus();
+            return false;
+          }
           const newCat = createCategoryModel({
             title,
             description: descInput.value.trim(),
@@ -986,18 +991,10 @@ async function openOcrFlow(categories) {
   const content = document.createElement('div');
   content.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
 
-  const selectLabel = document.createElement('label');
-  selectLabel.className = 'input-label';
-  selectLabel.textContent = 'انتخاب دسته هدف:';
-  
-  const select = document.createElement('select');
-  select.className = 'text-input';
-  select.style.cssText = 'margin-bottom: var(--space-2);';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat.id;
-    opt.textContent = cat.title;
-    select.appendChild(opt);
+  const select = createSelectField({
+    label: 'انتخاب دسته هدف:',
+    options: categories.map((cat) => ({ value: cat.id, label: cat.title })),
+    value: categories[0].id,
   });
 
   const uploadBox = document.createElement('div');
@@ -1074,7 +1071,7 @@ async function openOcrFlow(categories) {
     }
   });
 
-  content.append(selectLabel, select, uploadBox);
+  content.append(select, uploadBox);
 
   const dialogOverlay = openDialog({
     title: 'استخراج متن از تصویر (OCR)',
@@ -1096,7 +1093,7 @@ async function openOcrFlow(categories) {
       <div class="dialog-content" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-3);">
         <div class="spinner" style="width: 48px; height: 48px;"></div>
         <h3 id="ocr-loading-text" style="font-size: 16px; font-weight: 700; color: var(--text-primary);">در حال راه‌اندازی سیستم OCR...</h3>
-        <p style="font-size: 13px; color: var(--text-secondary);">این فرآیند به صورت کاملاً محلی در مرورگر شما انجام می‌شود.</p>
+        <p style="font-size: 13px; color: var(--text-secondary);">اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.</p>
       </div>
     `;
     document.body.appendChild(loadingOverlay);
@@ -1155,7 +1152,11 @@ function openOcrPreviewDialog(extractedText, categoryId, categories) {
         variant: 'primary',
         onClick: async () => {
           const text = textarea.value.trim();
-          if (!text) return;
+          if (!text) {
+            showToast('متنی برای تولید کارت وجود ندارد.', 'error');
+            textarea.focus();
+            return false;
+          }
 
           const loadingOverlay = document.createElement('div');
           loadingOverlay.className = 'overlay';
@@ -1208,7 +1209,11 @@ function openOcrPreviewDialog(extractedText, categoryId, categories) {
         variant: 'secondary',
         onClick: async () => {
           const text = textarea.value.trim();
-          if (!text) return;
+          if (!text) {
+            showToast('متنی برای ذخیره وجود ندارد.', 'error');
+            textarea.focus();
+            return false;
+          }
 
           const manualContent = document.createElement('div');
           manualContent.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
@@ -1245,7 +1250,11 @@ function openOcrPreviewDialog(extractedText, categoryId, categories) {
                 variant: 'primary',
                 onClick: async () => {
                   const frontText = frontInput.value.trim();
-                  if (!frontText) return;
+                  if (!frontText) {
+                    showToast('لطفاً روی کارت (پرسش) را پر کنید.', 'error');
+                    frontInput.focus();
+                    return false;
+                  }
 
                   const newCard = createFlashcardModel({
                     categoryId,
@@ -1286,12 +1295,14 @@ const getSystemInstruction = (categoryTitle, categoryDesc) => {
 [
   {
     "front": "پرسش روی کارت (مثلا: پایتخت فرانسه چیست؟)",
-    "back": "پاسخ پشت کارت (مثلا: پاریس)"
+    "back": "پاسخ پشت کارت (مثلا: پاریس)",
+    "wrongOptions": ["گزینه غلط باورپذیر ۱ (مثلا: لندن)", "گزینه غلط باورپذیر ۲ (مثلا: رم)", "گزینه غلط باورپذیر ۳ (مثلا: مادرید)"],
+    "falseStatement": "نسخه نادرست پاسخ (مثلا: پایتخت فرانسه لندن است)"
   }
 ]
 [/FLASHCARDS_JSON]
 
-نکته بسیار مهم: حتماً بخش JSON بین دو تگ [FLASHCARDS_JSON] و [/FLASHCARDS_JSON] باشد و فرمت معتبر JSON داشته باشد.
+نکته بسیار مهم: حتماً بخش JSON بین دو تگ [FLASHCARDS_JSON] و [/FLASHCARDS_JSON] باشد و فرمت معتبر JSON داشته باشد. فیلدهای wrongOptions و falseStatement را هم همیشه پر کن تا گزینه‌های غلط آزمون بعداً از فلش‌کارت‌های دیگر و نامرتبط قرض گرفته نشوند.
 
 نکته مهم درباره فرمول‌های ریاضی داخل front و back فلش‌کارت‌ها: هر عبارت ریاضی (کسر، توان، ریشه، مجموعه، بازه، نامعادله و...) را همیشه با علامت دلار احاطه کن — برای فرمول داخل متن یک $ در ابتدا و یک $ در انتها (مثلاً $n(A \\cup B) = n(A) + n(B) - n(A \\cap B)$) و از دستورات استاندارد LaTeX مثل \\frac{}{}, ^{}, _{}, \\sqrt{}, \\cup, \\cap, \\in, \\leq, \\geq, \\infty, \\alpha و مشابه آن استفاده کن. بازه‌های عددی مثل [a, b) را به شکل معمولی و فقط داخل $...$ بنویس.
 
@@ -1497,6 +1508,9 @@ element: convex_lens
 f: 10
 do: 20
 \`\`\`
+۱۲. اگر کاربر خواست چیزی را با کدنویسی رسم کنید، بسازید یا شبیه‌سازی کنید (مثلاً 'یک دایره با کد بکش'، 'یک انیمیشن ساده بساز'، 'یک بازی کوچک درست کن')، حتماً یک بلاک کد با زبان run تولید کنید. کد داخل این بلاک باید یک سند HTML کامل، مستقل و بدون وابستگی به فایل یا کتابخانه خارجی باشد (تگ‌های style و script داخل همان بلاک نوشته شوند). از رنگ‌های ساده و خوانا استفاده کنید. در این بلاک هیچ متن توضیحی اضافه ننویسید؛ فقط کد.
+بسیار مهم: کل طراحی را برای یک بوم (canvas) با اندازه ثابت ۹۶۰ در ۶۰۰ پیکسل انجام بده. عرض و ارتفاع body یا صفحه را با vw یا vh یا 100% تنظیم نکن؛ به‌جایش اندازه بوم را دقیقاً 960px در 600px با پیکسل ثابت در نظر بگیر (مثلاً body { width:960px; height:600px; margin:0; overflow:hidden; position:relative; }) و تمام عناصر را با مختصات پیکسلی ثابت نسبت به همین بوم بچین. این کار باعث می‌شود پیش‌نمایش روی هر اندازه صفحه‌ای، بدون افتادگی یا بریدگی، به‌درستی نمایش داده شود.
+
 در بلاک‌های physics توضیحات اضافه ننویسید.`;
 };
 
@@ -1584,25 +1598,38 @@ export async function renderAI(container) {
   async function renderHistoryList() {
     historyList.innerHTML = '';
     const convs = await aiConversationRepository.getAll();
-    convs.sort((a,b) => b.updatedAt - a.updatedAt);
+    convs.sort((a,b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
     
     for (const conv of convs) {
       const item = document.createElement('div');
       item.style.cssText = 'padding:var(--space-2); border-radius:var(--radius-card); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s; position:relative;';
       
       const contentDiv = document.createElement('div');
-      contentDiv.style.cssText = 'flex:1; min-width:0;';
+      contentDiv.style.cssText = 'flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:var(--space-2);';
       
       const catText = conv.categoryId ? ((await categoryRepository.getById(conv.categoryId))?.title || 'نامشخص') : 'عمومی';
-      const titleEl = document.createElement('div');
-      titleEl.style.cssText = 'font-weight:700; font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
-      titleEl.textContent = `${catText}: ${conv.topic || 'چت'}`;
+      
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'display:flex; align-items:center; gap:6px; min-width:0; flex:1;';
+
+      const catSpan = document.createElement('span');
+      catSpan.style.cssText = 'font-weight:700; font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; max-width:45%;';
+      catSpan.textContent = catText;
+
+      const separator = document.createElement('span');
+      separator.style.cssText = 'width:4px; height:4px; border-radius:50%; background:var(--text-tertiary); opacity:0.4; flex-shrink:0; margin-top:1px;';
+
+      const topicSpan = document.createElement('span');
+      topicSpan.style.cssText = 'font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;';
+      topicSpan.textContent = conv.topic || 'چت';
+
+      infoDiv.append(catSpan, separator, topicSpan);
       
       const dateEl = document.createElement('div');
-      dateEl.style.cssText = 'font-size:11px; color:var(--text-secondary); margin-top:2px;';
+      dateEl.style.cssText = 'font-size:11px; color:var(--text-tertiary); white-space:nowrap; flex-shrink:0; margin-right:4px;';
       dateEl.textContent = new Date(conv.updatedAt || conv.createdAt).toLocaleDateString('fa-IR');
       
-      contentDiv.append(titleEl, dateEl);
+      contentDiv.append(infoDiv, dateEl);
       item.appendChild(contentDiv);
       
       // Long press for delete
@@ -1627,6 +1654,8 @@ export async function renderAI(container) {
         currentCategoryId = conv.categoryId || 'general';
         loadConversation();
         closeSidebar();
+        conv.updatedAt = new Date().toISOString();
+        aiConversationRepository.update(conv.id, { updatedAt: conv.updatedAt }).catch((err) => console.error('Failed to bump conversation updatedAt', err));
       });
       
       historyList.appendChild(item);
@@ -1715,16 +1744,108 @@ export async function renderAI(container) {
   const inputContainer = document.createElement('div');
   inputContainer.style.cssText = 'display:flex; align-items:flex-end; gap:var(--space-2); padding:var(--space-1) var(--space-1); background: color-mix(in srgb, var(--bg-card) 60%, transparent); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1.5px solid var(--border-soft); border-radius: 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.06); width:100%; box-sizing:border-box; min-width:0; margin-top: auto; margin-bottom: var(--space-2);';
 
+  const attachWrapper = document.createElement('div');
+  attachWrapper.style.cssText = 'position:relative; display:flex; align-items:center; justify-content:center; margin-bottom:2px; margin-right:4px; flex-shrink:0;';
+
+  const attachMenu = document.createElement('div');
+  attachMenu.style.cssText = 'position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; z-index:100;';
+
+  const options = [
+    { id: 'camera', icon: 'photo_camera', accept: 'image/*', capture: 'environment' },
+    { id: 'document', icon: 'description', accept: '*/*' },
+    { id: 'image', icon: 'image', accept: 'image/*' }
+  ];
+
+  const optionElements = options.map((opt, i) => {
+    const btn = document.createElement('button');
+    btn.innerHTML = `<span class="material-symbols-rounded" style="font-size:20px;">${opt.icon}</span>`;
+    btn.style.cssText = `
+      width: 40px; height: 40px; border-radius: 20px; 
+      background: color-mix(in srgb, var(--bg-card) 60%, transparent); 
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-soft); box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--color-primary); cursor: pointer; outline: none; padding: 0;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s;
+      transform: translateY(${20 + i * 8}px) scale(0.5);
+      opacity: 0;
+      pointer-events: none;
+    `;
+    btn.addEventListener('mouseenter', () => btn.style.background = 'var(--color-primary-soft)');
+    btn.addEventListener('mouseleave', () => btn.style.background = 'color-mix(in srgb, var(--bg-card) 60%, transparent)');
+    btn.addEventListener('click', () => {
+      closeMenu();
+      fileSelector.accept = opt.accept;
+      if (opt.capture) {
+        fileSelector.setAttribute('capture', opt.capture);
+      } else {
+        fileSelector.removeAttribute('capture');
+      }
+      fileSelector.click();
+    });
+    attachMenu.appendChild(btn);
+    return btn;
+  });
+
+  let menuOpen = false;
+
   const attachBtn = createButton({
     label: '',
     icon: 'add',
     variant: 'text',
-    onClick: () => fileSelector.click()
+    onClick: () => {
+      if (menuOpen) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    }
   });
-  attachBtn.style.cssText += '; width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; color:var(--text-secondary); margin-bottom: 2px; margin-right: 4px; transition: background 0.2s, color 0.2s;';
+  attachBtn.style.cssText += '; width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; color:var(--text-secondary); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index:2; position:relative;';
   
-  attachBtn.addEventListener('mouseenter', () => { attachBtn.style.background = 'var(--bg-sunken)'; attachBtn.style.color = 'var(--color-primary)'; });
-  attachBtn.addEventListener('mouseleave', () => { attachBtn.style.background = 'transparent'; attachBtn.style.color = 'var(--text-secondary)'; });
+  const attachBtnIcon = attachBtn.querySelector('.material-symbols-rounded');
+  if (attachBtnIcon) {
+    attachBtnIcon.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+  }
+
+  function openMenu() {
+    menuOpen = true;
+    attachMenu.style.pointerEvents = 'auto';
+    if (attachBtnIcon) attachBtnIcon.style.transform = 'rotate(45deg)';
+    attachBtn.style.color = 'var(--color-primary)';
+    attachBtn.style.background = 'var(--color-primary-soft)';
+    
+    optionElements.forEach((el) => {
+      el.style.transform = 'translateY(0) scale(1)';
+      el.style.opacity = '1';
+      el.style.pointerEvents = 'auto';
+    });
+  }
+
+  function closeMenu() {
+    menuOpen = false;
+    attachMenu.style.pointerEvents = 'none';
+    if (attachBtnIcon) attachBtnIcon.style.transform = 'rotate(0deg)';
+    attachBtn.style.color = 'var(--text-secondary)';
+    attachBtn.style.background = 'transparent';
+    
+    optionElements.forEach((el, i) => {
+      el.style.transform = `translateY(${20 + i * 8}px) scale(0.5)`;
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (menuOpen && !attachWrapper.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  attachBtn.addEventListener('mouseenter', () => { if(!menuOpen) { attachBtn.style.background = 'var(--bg-sunken)'; attachBtn.style.color = 'var(--color-primary)'; } });
+  attachBtn.addEventListener('mouseleave', () => { if(!menuOpen) { attachBtn.style.background = 'transparent'; attachBtn.style.color = 'var(--text-secondary)'; } });
+
+  attachWrapper.append(attachMenu, attachBtn);
 
   const inputField = createTextArea({
     placeholder: 'پیام خود را بنویسید...',
@@ -1758,7 +1879,7 @@ export async function renderAI(container) {
   });
   sendBtn.style.cssText += '; width:40px; height:40px; border-radius:20px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; margin-bottom: 2px; margin-left: 4px; box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);';
 
-  inputContainer.append(attachBtn, inputField, sendBtn);
+  inputContainer.append(attachWrapper, inputField, sendBtn);
   wrap.appendChild(inputContainer);
 
   // Local state
@@ -2056,11 +2177,9 @@ export async function renderAI(container) {
     renderMessage('user', text, msgAttachments);
     chatList.scrollTo({ top: chatList.scrollHeight, behavior: 'smooth' });
 
-    // Save user message to IndexedDB
+    // Save user message
     const dbCatId = currentCategoryId === 'general' ? null : currentCategoryId;
-    let isFirstMessage = false;
     if (!activeConversation) {
-      isFirstMessage = true;
       activeConversation = createAiConversationModel({
         categoryId: dbCatId,
         messages: []
@@ -2073,27 +2192,8 @@ export async function renderAI(container) {
       attachments: msgAttachments,
       timestamp: new Date().toISOString()
     });
-    await aiConversationRepository.update(activeConversation.id, { messages: activeConversation.messages });
-
-    if (isFirstMessage) {
-      setTimeout(async () => {
-        try {
-          const { callGeminiAPI } = await import('../core/gemini-client.js');
-          const apiKey = await settingsRepository.getSetting('gemini_api_key', '');
-          const modelName = await settingsRepository.getSetting('gemini_model', '');
-          const topicResp = await callGeminiAPI([
-            {role: 'user', parts: [{text: `موضوع این مکالمه را در حداکثر ۴ کلمه بیان کن. فقط کلمات موضوع را بنویس بدون هیچ توضیح اضافه‌ای: "${text}"`}]}
-          ], { model: modelName || 'gemini-2.5-flash' }, apiKey);
-          if (topicResp) {
-            const topicText = topicResp.candidates[0].content.parts[0].text.trim();
-            activeConversation.topic = topicText.replace(/['"]/g, '');
-            await aiConversationRepository.update(activeConversation.id, { topic: activeConversation.topic });
-          }
-        } catch(e) {
-          console.error('Topic extraction failed', e);
-        }
-      }, 0);
-    }
+    activeConversation.updatedAt = new Date().toISOString();
+    await aiConversationRepository.update(activeConversation.id, { messages: activeConversation.messages, updatedAt: activeConversation.updatedAt });
 
     // Render Loading indicator for assistant
     const loadBubble = renderLoadingBubble();
@@ -2128,9 +2228,14 @@ export async function renderAI(container) {
       renderMessage('ai', resData.text);
       chatList.scrollTo({ top: chatList.scrollHeight, behavior: 'smooth' });
 
-      // Save assistant message to IndexedDB
+      // Save assistant message
       activeConversation.messages.push({ sender: 'ai', text: resData.text, timestamp: new Date().toISOString() });
-      await aiConversationRepository.update(activeConversation.id, { messages: activeConversation.messages });
+      activeConversation.updatedAt = new Date().toISOString();
+      await aiConversationRepository.update(activeConversation.id, { messages: activeConversation.messages, updatedAt: activeConversation.updatedAt });
+
+      // Re-generate a short topic for the sidebar based on the whole conversation so far,
+      // replacing whatever topic was set before. Runs in the background and never blocks the UI.
+      updateConversationTopic();
 
     } catch (err) {
       console.error(err);
@@ -2140,16 +2245,46 @@ export async function renderAI(container) {
     }
   }
 
+  // Generates a short (max ~4 word) topic for the active conversation using the
+  // full message history (not just the first message), and overwrites the
+  // previous topic in the DB. Safe to call after every turn.
+  async function updateConversationTopic() {
+    const conv = activeConversation;
+    if (!conv) return;
+    try {
+      const apiKey = await db.getSetting('gemini_api_key', '');
+      if (!apiKey) return;
+      const modelName = await db.getSetting('gemini_model', '');
+
+      const transcript = conv.messages
+        .filter(m => m.text)
+        .map(m => `${m.sender === 'user' ? 'کاربر' : 'دستیار'}: ${m.text}`)
+        .join('\n')
+        .slice(-6000); // keep the prompt bounded for long chats
+
+      const { chatWithGemini } = await import('../core/gemini-client.js');
+      const topicRes = await chatWithGemini({
+        apiKey,
+        model: modelName || undefined,
+        message: `با توجه به کل مکالمه زیر، یک موضوع بسیار کوتاه (حداکثر ۴ کلمه) و گویا برای این گفتگو بنویس که خلاصه کل گفتگو باشد، نه فقط اولین پیام. فقط خود موضوع را بدون هیچ توضیح، گیومه یا نقطه اضافه بنویس.\n\nمکالمه:\n${transcript}`
+      });
+
+      const topicText = (topicRes && topicRes.text || '').trim().replace(/^["'«]+|["'».]+$/g, '');
+      if (topicText && activeConversation && activeConversation.id === conv.id) {
+        activeConversation.topic = topicText;
+        await aiConversationRepository.update(conv.id, { topic: topicText });
+      }
+    } catch (e) {
+      console.error('Topic extraction failed', e);
+    }
+  }
+
   function renderLoadingBubble() {
     const bubble = document.createElement('div');
-    bubble.style.cssText = 'align-self:flex-start; background:var(--bg-card); border:1px solid var(--border-subtle); padding:var(--space-3); border-radius:16px 16px 16px 4px; display:flex; align-items:center; gap:var(--space-2); max-width:80%;';
+    bubble.style.cssText = 'align-self:flex-start; background:var(--bg-card); border:1px solid var(--border-subtle); padding:var(--space-2) var(--space-3); border-radius:16px 16px 16px 4px; display:flex; align-items:center; max-width:80%;';
     
-    const text = document.createElement('span');
-    text.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary); font-weight:700;';
-    text.textContent = 'درحال نوشتن پاسخ…';
-
-    const spinner = createLoadingInline();
-    bubble.append(spinner, text);
+    const typingIndicator = createTypingIndicator();
+    bubble.append(typingIndicator);
     chatList.appendChild(bubble);
     return bubble;
   }
@@ -3086,26 +3221,10 @@ export async function renderAI(container) {
         
         const tree = d3.tree().nodeSize([dx, dy]);
         tree(root);
-        
-        let x0 = Infinity;
-        let x1 = -x0;
-        let y1 = -Infinity;
-        root.each(d => {
-          if (d.x > x1) x1 = d.x;
-          if (d.x < x0) x0 = d.x;
-          if (d.y > y1) y1 = d.y;
-        });
-        
-        const height = x1 - x0 + dx * 2;
-        const treeWidth = y1 + dy;
-        const finalWidth = Math.max(width, treeWidth);
-        
+
         const svg = d3.select(container).append('svg')
-            .attr('width', finalWidth)
-            .attr('height', height)
-            .attr('viewBox', `${-dx},${x0 - dx},${finalWidth},${height}`)
             .attr('style', 'max-width: 100%; height: auto; font-family: var(--font-mono); direction: ltr;');
-            
+
         // Links
         svg.append('g')
             .attr('fill', 'none')
@@ -3144,7 +3263,20 @@ export async function renderAI(container) {
           .clone(true).lower()
             .attr('stroke', 'var(--bg-card)')
             .attr('stroke-width', 4);
-            
+
+        // Measure the ACTUAL rendered bounding box (this includes the width of
+        // text labels, not just node dot positions), so long Persian labels on
+        // root/leaf nodes are no longer clipped by the viewBox edges.
+        const bbox = svg.node().getBBox();
+        const padding = 12;
+        const finalWidth = bbox.width + padding * 2;
+        const finalHeight = bbox.height + padding * 2;
+
+        svg
+            .attr('width', finalWidth)
+            .attr('height', finalHeight)
+            .attr('viewBox', `${bbox.x - padding},${bbox.y - padding},${finalWidth},${finalHeight}`);
+
         card.addEventListener('click', () => {
           const clonedSvg = container.querySelector('svg').cloneNode(true);
           clonedSvg.style.width = '100%';
@@ -3280,6 +3412,135 @@ export async function renderAI(container) {
       }
     }
     return spec;
+  }
+
+  function initLiveCodeBlocks(parent) {
+    // Must match LIVE_CANVAS_W/H used when building the srcdoc in
+    // renderMarkdownAndMath — this is the fixed "design canvas" size the AI
+    // is instructed to build against.
+    const LIVE_CANVAS_W = 960;
+    const LIVE_CANVAS_H = 600;
+
+    // Keep the small in-card preview scaled to exactly fill its viewport's
+    // actual rendered width, on any screen size, using a ResizeObserver so
+    // it re-scales correctly on rotation or window resize too.
+    const viewports = parent.querySelectorAll('.live-code-viewport');
+    viewports.forEach(viewport => {
+      const scaler = viewport.querySelector('.live-code-scaler');
+      if (!scaler) return;
+      const applyScale = () => {
+        const w = viewport.clientWidth;
+        if (!w) return;
+        const scale = w / LIVE_CANVAS_W;
+        scaler.style.transform = `scale(${scale})`;
+      };
+      applyScale();
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(applyScale);
+        ro.observe(viewport);
+      } else {
+        window.addEventListener('resize', applyScale);
+      }
+    });
+
+    const expandBtns = parent.querySelectorAll('.live-code-expand-btn');
+    expandBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.live-code-card');
+        const iframe = card.querySelector('iframe');
+        const docStr = iframe.srcdoc;
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'icon-btn material-symbols-rounded';
+        closeBtn.textContent = 'close';
+        closeBtn.style.cssText = 'position:fixed; top:16px; left:16px; z-index:10000; background:rgba(0,0,0,0.6); color:#fff; width:44px; height:44px; border-radius:50%; border:none; cursor:pointer; font-size:24px; display:flex; align-items:center; justify-content:center;';
+
+        // Same fixed-canvas scaling approach as the small preview, but here
+        // we fit-to-contain (fit within whichever of width/height is the
+        // tighter constraint) and center the result, since a fullscreen
+        // overlay's aspect ratio won't generally match the canvas's.
+        const bigWrap = document.createElement('div');
+        bigWrap.style.cssText = `position:relative; width:${LIVE_CANVAS_W}px; height:${LIVE_CANVAS_H}px; transform-origin:center center;`;
+
+        const bigIframe = document.createElement('iframe');
+        bigIframe.sandbox = 'allow-scripts';
+        bigIframe.srcdoc = docStr;
+        bigIframe.style.cssText = `width:${LIVE_CANVAS_W}px; height:${LIVE_CANVAS_H}px; border:none; display:block; background:#fff;`;
+
+        bigWrap.appendChild(bigIframe);
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(bigWrap);
+        document.body.appendChild(overlay);
+
+        const fitToScreen = () => {
+          const scale = Math.min(window.innerWidth / LIVE_CANVAS_W, window.innerHeight / LIVE_CANVAS_H);
+          bigWrap.style.transform = `scale(${scale})`;
+        };
+        fitToScreen();
+        window.addEventListener('resize', fitToScreen);
+        closeBtn.onclick = () => {
+          window.removeEventListener('resize', fitToScreen);
+          overlay.remove();
+        };
+      });
+    });
+
+    const codeBtns = parent.querySelectorAll('.live-code-view-btn');
+    codeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rawCode = decodeURIComponent(btn.getAttribute('data-code'));
+        
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex; flex-direction:column; gap:16px;';
+        
+        const pre = document.createElement('pre');
+        pre.className = 'code-block';
+        pre.style.cssText = 'background:var(--bg-sunken); font-family:var(--font-mono); direction:ltr; text-align:left; overflow-x:auto; padding:16px; border-radius:12px; margin:0; border:1px solid var(--border-soft); font-size:var(--text-caption); max-height: 50vh;';
+        const code = document.createElement('code');
+        code.textContent = rawCode;
+        pre.appendChild(code);
+        
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex; gap:12px; justify-content:flex-end;';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-outline';
+        copyBtn.textContent = 'کپی کد';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(rawCode).then(() => {
+            import('../core/ui.js').then(({ showToast }) => showToast('کد کپی شد', 'success'));
+          });
+        };
+        
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'btn btn-primary';
+        dlBtn.textContent = 'دانلود فایل';
+        dlBtn.onclick = () => {
+          const blob = new Blob([rawCode], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ai-creation.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+        
+        actions.append(copyBtn, dlBtn);
+        container.append(pre, actions);
+        
+        import('../core/ui.js').then(({ openBottomSheet }) => {
+          openBottomSheet({
+            title: 'مشاهده کد',
+            content: container
+          });
+        });
+      });
+    });
   }
 
   function initPhysicsSimulations(parent) {
@@ -7936,6 +8197,7 @@ export async function renderAI(container) {
     const codeBlocks = [];
     const mathPlots = [];
     const vennDiagrams = [];
+    const liveCodeBlocks = [];
     const intervalPlots = [];
     const geometryPlots = [];
     const mindmapPlots = [];
@@ -7968,6 +8230,11 @@ export async function renderAI(container) {
       if (lang === 'mindmap' || lang === 'tree') {
         const placeholder = `MINDMAPPLOTPLACEHOLDER${mindmapPlots.length}`;
         mindmapPlots.push(code.trim());
+        return placeholder;
+      }
+      if (lang === 'run' || lang === 'live') {
+        const placeholder = `LIVECODEPLACEHOLDER${liveCodeBlocks.length}`;
+        liveCodeBlocks.push(code.trim());
         return placeholder;
       }
       if (lang === 'physics') {
@@ -8801,6 +9068,78 @@ export async function renderAI(container) {
       finalHtml = finalHtml.replace(`PHYSICSPLOTPLACEHOLDER${i}`, physicsHtml);
     }
 
+
+            // Fixed "design canvas" size that the AI is instructed (see the
+    // system prompt, item 12) to build against. Because this size is known
+    // and constant, we can always compute an exact scale factor to fit it
+    // into whatever space is actually available — instead of trying to
+    // measure the AI-generated content's "natural" size at runtime, which
+    // is unreliable when that content itself uses vw/vh units (it will
+    // always just report back the size of its own container).
+    const LIVE_CANVAS_W = 960;
+    const LIVE_CANVAS_H = 600;
+
+    for (let i = 0; i < liveCodeBlocks.length; i++) {
+      const codeStr = liveCodeBlocks[i];
+      if (!codeStr.trim()) {
+        finalHtml = finalHtml.replace(`LIVECODEPLACEHOLDER${i}`, '<div style="padding:16px;background:var(--bg-sunken);color:var(--text-secondary);border-radius:var(--radius-card);text-align:center;border:1px solid var(--border-soft);margin:var(--space-2) 0;">پیش‌نمایش در دسترس نیست</div>');
+        continue;
+      }
+      if (codeStr.length > 50000) {
+        finalHtml = finalHtml.replace(`LIVECODEPLACEHOLDER${i}`, '<div style="padding:16px;background:var(--color-danger-soft);color:var(--color-danger);border-radius:var(--radius-card);text-align:center;">این کد برای پیش‌نمایش بسیار طولانی است؛ لطفاً از هوش مصنوعی بخواهید ساده‌ترش کند.</div>');
+        continue;
+      }
+
+      let docStr = '';
+      if (codeStr.toLowerCase().includes('<html')) {
+        docStr = codeStr;
+      } else {
+        docStr = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;width:${LIVE_CANVAS_W}px;height:${LIVE_CANVAS_H}px;overflow:hidden;background:#fff;}</style></head><body>${codeStr}</body></html>`;
+      }
+
+      const encodedCode = encodeURIComponent(codeStr);
+      // Each card gets a unique id so its inline resize-observer script can
+      // find its own viewport/scaler pair without clashing with other
+      // live-code cards in the same chat.
+      const uid = `lc${Date.now()}${i}`;
+
+      const liveCardHtml = `
+        <div class="live-code-card" style="
+          background: var(--bg-card);
+          border: 1px solid var(--border-soft);
+          border-radius: var(--radius-card);
+          margin: var(--space-3) 0;
+          box-shadow: var(--shadow-card);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          box-sizing: border-box;
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-secondary);
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-soft);
+          ">
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">پیش‌نمایش زنده</span>
+            <div style="display:flex; gap: 4px;">
+              <button class="icon-btn material-symbols-rounded live-code-view-btn" data-code="${encodedCode}" style="width:32px; height:32px; font-size: 18px; color: var(--text-secondary); border-radius: var(--radius-btn); cursor: pointer; transition: background 0.2s; background:none; border:none;" title="مشاهده کد">code</button>
+              <button class="icon-btn material-symbols-rounded live-code-expand-btn" style="width:32px; height:32px; font-size: 18px; color: var(--text-secondary); border-radius: var(--radius-btn); cursor: pointer; transition: background 0.2s; background:none; border:none;" title="بزرگنمایی">open_in_full</button>
+            </div>
+          </div>
+          <div class="live-code-viewport" id="${uid}" style="position:relative; width:100%; aspect-ratio:${LIVE_CANVAS_W}/${LIVE_CANVAS_H}; overflow:hidden; background:#fff;">
+            <div class="live-code-scaler" style="position:absolute; top:0; left:0; width:${LIVE_CANVAS_W}px; height:${LIVE_CANVAS_H}px; transform-origin:top left;">
+              <iframe sandbox="allow-scripts" srcdoc="${escapeHtml(docStr)}" style="width:${LIVE_CANVAS_W}px; height:${LIVE_CANVAS_H}px; border:none; display:block;"></iframe>
+            </div>
+          </div>
+        </div>
+      `;
+      finalHtml = finalHtml.replace(`LIVECODEPLACEHOLDER${i}`, liveCardHtml);
+    }
+
     return finalHtml;
   }
 
@@ -8967,36 +9306,93 @@ export async function renderAI(container) {
             icon: 'add_circle',
             variant: 'secondary',
             onClick: async () => {
-              if (currentCategoryId === 'general') {
-                openDialog({
-                  title: 'موضوع مشخص نیست!',
-                  body: 'برای افزودن فلش‌کارت به کتابخانه، ابتدا باید از نوار بالای صفحه یک موضوع مطالعه (دسته) انتخاب کنید.',
-                  actions: [{ label: 'تایید', variant: 'primary' }]
+              const performSave = async (categoryId) => {
+                const wrongOptions = Array.isArray(c.wrongOptions)
+                  ? c.wrongOptions.map((s) => (s || '').toString().trim()).filter(Boolean).slice(0, 3)
+                  : [];
+                const falseStatement = (c.falseStatement || '').toString().trim();
+                const flashcard = createFlashcardModel({
+                  categoryId: categoryId,
+                  frontContent: [{ type: 'text', value: c.front }],
+                  backContent: [{ type: 'text', value: c.back }],
+                  source: 'ai',
+                  aiGenerated: true,
+                  // Let the AI's own wrong options power multiple-choice
+                  // quizzing for this card, so distractors stay related to
+                  // the actual question instead of being pulled from other,
+                  // unrelated cards later during practice/exam.
+                  answerType: wrongOptions.length > 0 ? 'choice' : 'auto',
+                  choiceOptions: wrongOptions,
+                  falseStatement,
                 });
-                return;
+                await flashcardRepository.create(flashcard);
+
+                const categoryCards = await flashcardRepository.getByIndex('categoryId', categoryId);
+                const activeCount = categoryCards.filter((card) => !card.deleted).length;
+                await categoryRepository.update(categoryId, { totalCards: activeCount });
+
+                // addBtn's children are [icon span, label span] — only the
+                // label should change; overwriting the icon span's textContent
+                // replaced the "add_circle" ligature with raw Persian text,
+                // which the icon font rendered as broken, oversized glyphs.
+                addBtn.disabled = true;
+                addBtn.firstChild.textContent = 'check_circle';
+                addBtn.lastChild.textContent = 'افزوده شد';
+                addBtn.style.cssText += '; background:var(--color-success-soft); border-color:var(--color-success); color:var(--color-success); cursor:default; opacity:1;';
+              };
+
+              if (currentCategoryId === 'general') {
+                const cats = await categoryRepository.getAll();
+                const availableCats = cats.filter(cat => cat.id !== 'general' && !cat.deleted);
+                
+                if (availableCats.length === 0) {
+                  openDialog({
+                    title: 'هیچ دسته‌ای یافت نشد!',
+                    body: 'شما هنوز هیچ دسته‌ای نساخته‌اید. ابتدا در صفحه اصلی یک دسته بسازید تا بتوانید فلش‌کارت‌ها را ذخیره کنید.',
+                    actions: [{ label: 'تایید', variant: 'primary' }]
+                  });
+                  return;
+                }
+
+                const bodyContainer = document.createElement('div');
+                
+                const label = document.createElement('div');
+                label.textContent = 'هیچ دسته‌ای انتخاب نشده است. لطفاً ابتدا دسته‌ای برای افزودن این کارت انتخاب کنید:';
+                label.style.cssText = 'font-size:14px; color:var(--text-secondary); line-height:1.6; margin-bottom: 12px;';
+                
+                const select = document.createElement('select');
+                select.className = 'ds-input';
+                select.style.cssText = 'width: 100%; padding: 12px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-soft); color: var(--text-primary); font-size: 15px; cursor: pointer;';
+                
+                availableCats.forEach(cat => {
+                  const option = document.createElement('option');
+                  option.value = cat.id;
+                  option.textContent = cat.title;
+                  select.appendChild(option);
+                });
+                
+                bodyContainer.append(label, select);
+
+                openDialog({
+                  title: 'انتخاب دسته',
+                  body: bodyContainer,
+                  actions: [
+                    { 
+                      label: 'ذخیره کارت', 
+                      variant: 'primary',
+                      onClick: async () => {
+                        await performSave(select.value);
+                      }
+                    },
+                    {
+                      label: 'انصراف',
+                      variant: 'text'
+                    }
+                  ]
+                });
+              } else {
+                await performSave(currentCategoryId);
               }
-              
-              const flashcard = createFlashcardModel({
-                categoryId: currentCategoryId,
-                frontContent: [{ type: 'text', value: c.front }],
-                backContent: [{ type: 'text', value: c.back }],
-                source: 'ai',
-                aiGenerated: true
-              });
-              await flashcardRepository.create(flashcard);
-
-              const categoryCards = await flashcardRepository.getByIndex('categoryId', currentCategoryId);
-              const activeCount = categoryCards.filter((card) => !card.deleted).length;
-              await categoryRepository.update(currentCategoryId, { totalCards: activeCount });
-
-              // addBtn's children are [icon span, label span] — only the
-              // label should change; overwriting the icon span's textContent
-              // replaced the "add_circle" ligature with raw Persian text,
-              // which the icon font rendered as broken, oversized glyphs.
-              addBtn.disabled = true;
-              addBtn.firstChild.textContent = 'check_circle';
-              addBtn.lastChild.textContent = 'افزوده شد';
-              addBtn.style.cssText += '; background:var(--color-success-soft); border-color:var(--color-success); color:var(--color-success); cursor:default; opacity:1;';
             }
           });
           addBtn.style.cssText += '; border-radius: 12px; font-size: 10px; height: 26px; padding: 2px 8px; flex-shrink: 0;';
@@ -9016,6 +9412,7 @@ export async function renderAI(container) {
     initIntervalPlots(bubble);
     initMindmaps(bubble);
     initPhysicsSimulations(bubble);
+    initLiveCodeBlocks(bubble);
   }
 }
 
@@ -9032,18 +9429,185 @@ export async function renderStats(container) {
   container.innerHTML = '';
 
   if (sessions.length === 0) {
-    container.appendChild(
-      createEmptyState({
-        icon: 'insights',
-        title: 'هنوز آماری ثبت نشده',
-        desc: 'زمان مطالعه، تعداد مرور، دقت پاسخ‌ها و روند پیشرفت شما بعد از اولین جلسه مرور در این بخش نمایش داده می‌شود.',
-        action: createButton({
-          label: 'شروع اولین مرور',
-          icon: 'play_arrow',
-          onClick: () => router.navigate('home'),
-        })
-      })
-    );
+    const emptyContainer = document.createElement('div');
+    emptyContainer.style.cssText = 'display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding: 48px 20px; min-height: 50vh;';
+    
+    emptyContainer.innerHTML = `
+      <div style="position:relative; width: 280px; height: 220px; margin-bottom: 36px;">
+        <svg viewBox="0 0 300 220" style="width:100%; height:100%; overflow:visible;">
+          <defs>
+            <radialGradient id="asc-glow" cx="50%" cy="42%" r="58%">
+              <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.14" />
+              <stop offset="55%" stop-color="var(--color-primary)" stop-opacity="0.05" />
+              <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0" />
+            </radialGradient>
+
+            <filter id="asc-glow-blur" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="30" />
+            </filter>
+
+            <linearGradient id="asc-bar-grad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.03" />
+              <stop offset="65%" stop-color="var(--color-primary)" stop-opacity="0.45" />
+              <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0.9" />
+            </linearGradient>
+
+            <linearGradient id="asc-line-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.35" />
+              <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="1" />
+            </linearGradient>
+
+            <radialGradient id="asc-cap-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.9" />
+              <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
+            </radialGradient>
+
+            <filter id="asc-soft-blur" x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+
+            <filter id="asc-particle-blur" x="-200%" y="-200%" width="500%" height="500%">
+              <feGaussianBlur stdDeviation="1.4" />
+            </filter>
+          </defs>
+
+          <!-- Ambient glow, no card, no border -->
+          <circle cx="150" cy="100" r="130" fill="url(#asc-glow)" filter="url(#asc-glow-blur)" />
+
+          <!-- Slowly drifting light particles for depth, kept away from the chart -->
+          <g class="asc-particles" filter="url(#asc-particle-blur)">
+            <circle cx="40" cy="40" r="2" fill="var(--color-accent)" opacity="0" class="asc-p1" />
+            <circle cx="265" cy="35" r="1.6" fill="var(--color-primary)" opacity="0" class="asc-p2" />
+            <circle cx="20" cy="150" r="1.8" fill="var(--color-primary)" opacity="0" class="asc-p3" />
+            <circle cx="280" cy="140" r="2.2" fill="var(--color-accent)" opacity="0" class="asc-p4" />
+            <circle cx="150" cy="18" r="1.5" fill="var(--color-accent)" opacity="0" class="asc-p5" />
+            <circle cx="60" cy="190" r="1.6" fill="var(--color-primary)" opacity="0" class="asc-p6" />
+          </g>
+
+          <!-- Floating chart group -->
+          <g class="asc-float">
+            <!-- Faint baseline guides (no enclosing frame) -->
+            <g opacity="0.06" stroke="var(--text-primary)" stroke-width="1" stroke-linecap="round">
+              <line x1="30" y1="80" x2="270" y2="80" />
+              <line x1="30" y1="125" x2="270" y2="125" />
+              <line x1="30" y1="170" x2="270" y2="170" />
+            </g>
+
+            <!-- Bars -->
+            <g>
+              <rect x="45" y="170" width="18" height="0" rx="7" fill="url(#asc-bar-grad)" class="asc-b1" />
+              <rect x="95" y="170" width="18" height="0" rx="7" fill="url(#asc-bar-grad)" class="asc-b2" />
+              <rect x="145" y="170" width="18" height="0" rx="7" fill="url(#asc-bar-grad)" class="asc-b3" />
+              <rect x="195" y="170" width="18" height="0" rx="7" fill="url(#asc-bar-grad)" class="asc-b4" />
+              <rect x="245" y="170" width="18" height="0" rx="7" fill="url(#asc-bar-grad)" class="asc-b5" />
+            </g>
+
+            <!-- Soft glowing light pooled above each bar's peak, replacing hard node dots -->
+            <g>
+              <ellipse cx="54" cy="150" rx="10" ry="6" fill="url(#asc-cap-glow)" class="asc-c1" />
+              <ellipse cx="104" cy="118" rx="10" ry="6" fill="url(#asc-cap-glow)" class="asc-c2" />
+              <ellipse cx="154" cy="80" rx="10" ry="6" fill="url(#asc-cap-glow)" class="asc-c3" />
+              <ellipse cx="204" cy="106" rx="10" ry="6" fill="url(#asc-cap-glow)" class="asc-c4" />
+              <ellipse cx="254" cy="62" rx="12" ry="7" fill="url(#asc-cap-glow)" class="asc-c5" />
+            </g>
+
+            <!-- Line -->
+            <path d="M 54 150 C 74 150, 84 118, 104 118 C 124 118, 134 80, 154 80 C 174 80, 184 106, 204 106 C 224 106, 234 62, 254 62"
+              fill="none" stroke="url(#asc-line-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="asc-line" />
+
+            <!-- Traveling comet of light along the line, with a soft blurred trail -->
+            <path d="M 54 150 C 74 150, 84 118, 104 118 C 124 118, 134 80, 154 80 C 174 80, 184 106, 204 106 C 224 106, 234 62, 254 62"
+              fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              filter="url(#asc-soft-blur)" class="asc-sweep-trail" />
+            <path d="M 54 150 C 74 150, 84 118, 104 118 C 124 118, 134 80, 154 80 C 174 80, 184 106, 204 106 C 224 106, 234 62, 254 62"
+              fill="none" stroke="#ffffff" stroke-opacity="0.95" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="asc-sweep" />
+          </g>
+        </svg>
+        <style>
+          /* Gentle continuous float, independent of the build/reset cycle */
+          @keyframes ascFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-7px); }
+          }
+          .asc-float { animation: ascFloat 6s ease-in-out infinite; transform-origin: center; }
+
+          /* Particles twinkle softly and drift, each on its own gentle offset */
+          @keyframes ascParticle {
+            0%, 100% { opacity: 0; transform: translateY(0px); }
+            50% { opacity: 0.55; transform: translateY(-6px); }
+          }
+          .asc-p1 { animation: ascParticle 5.5s ease-in-out infinite; }
+          .asc-p2 { animation: ascParticle 6.5s ease-in-out infinite 0.8s; }
+          .asc-p3 { animation: ascParticle 7s ease-in-out infinite 1.6s; }
+          .asc-p4 { animation: ascParticle 5.8s ease-in-out infinite 2.2s; }
+          .asc-p5 { animation: ascParticle 6.2s ease-in-out infinite 0.4s; }
+          .asc-p6 { animation: ascParticle 7.4s ease-in-out infinite 3s; }
+
+          /* Bars rise from the baseline, hold, then settle back before the next pass */
+          @keyframes ascBar1 { 0%, 8% { height: 0px; y: 170px; opacity: 0; } 16% { opacity: 1; } 26%, 78% { height: 20px; y: 150px; opacity: 1; } 90%, 100% { height: 0px; y: 170px; opacity: 0; } }
+          @keyframes ascBar2 { 0%, 11% { height: 0px; y: 170px; opacity: 0; } 19% { opacity: 1; } 29%, 78% { height: 52px; y: 118px; opacity: 1; } 90%, 100% { height: 0px; y: 170px; opacity: 0; } }
+          @keyframes ascBar3 { 0%, 14% { height: 0px; y: 170px; opacity: 0; } 22% { opacity: 1; } 32%, 78% { height: 90px; y: 80px; opacity: 1; } 90%, 100% { height: 0px; y: 170px; opacity: 0; } }
+          @keyframes ascBar4 { 0%, 17% { height: 0px; y: 170px; opacity: 0; } 25% { opacity: 1; } 35%, 78% { height: 64px; y: 106px; opacity: 1; } 90%, 100% { height: 0px; y: 170px; opacity: 0; } }
+          @keyframes ascBar5 { 0%, 20% { height: 0px; y: 170px; opacity: 0; } 28% { opacity: 1; } 38%, 78% { height: 108px; y: 62px; opacity: 1; } 90%, 100% { height: 0px; y: 170px; opacity: 0; } }
+          .asc-b1 { animation: ascBar1 9s cubic-bezier(0.22, 0.8, 0.2, 1) infinite; }
+          .asc-b2 { animation: ascBar2 9s cubic-bezier(0.22, 0.8, 0.2, 1) infinite; }
+          .asc-b3 { animation: ascBar3 9s cubic-bezier(0.22, 0.8, 0.2, 1) infinite; }
+          .asc-b4 { animation: ascBar4 9s cubic-bezier(0.22, 0.8, 0.2, 1) infinite; }
+          .asc-b5 { animation: ascBar5 9s cubic-bezier(0.22, 0.8, 0.2, 1) infinite; }
+
+          /* Soft glow pools breathe gently above each bar peak instead of hard dots */
+          @keyframes ascCap {
+            0%, 34% { opacity: 0; transform: scale(0.6); }
+            48% { opacity: 0.9; transform: scale(1); }
+            64% { opacity: 0.55; transform: scale(0.85); }
+            78% { opacity: 0.9; transform: scale(1); }
+            90%, 100% { opacity: 0; transform: scale(0.6); }
+          }
+          .asc-c1 { animation: ascCap 9s ease-in-out infinite; transform-origin: 54px 150px; }
+          .asc-c2 { animation: ascCap 9s ease-in-out infinite 0.08s; transform-origin: 104px 118px; }
+          .asc-c3 { animation: ascCap 9s ease-in-out infinite 0.16s; transform-origin: 154px 80px; }
+          .asc-c4 { animation: ascCap 9s ease-in-out infinite 0.24s; transform-origin: 204px 106px; }
+          .asc-c5 { animation: ascCap 9s ease-in-out infinite 0.32s; transform-origin: 254px 62px; }
+
+          /* Line draws in smoothly, holds, fades before reset */
+          @keyframes ascLineDraw {
+            0%, 18% { stroke-dashoffset: 260; opacity: 0; }
+            20% { opacity: 1; }
+            42%, 78% { stroke-dashoffset: 0; opacity: 1; }
+            90%, 100% { stroke-dashoffset: 260; opacity: 0; }
+          }
+          .asc-line { stroke-dasharray: 260; stroke-dashoffset: 260; animation: ascLineDraw 9s cubic-bezier(0.3, 0.1, 0.2, 1) infinite; }
+
+          /* A single comet of light travels the finished line, with a soft blurred trail behind it, then everything fades for a seamless restart */
+          @keyframes ascSweep {
+            0%, 56% { stroke-dasharray: 22 400; stroke-dashoffset: 430; opacity: 0; }
+            60% { opacity: 1; }
+            74% { stroke-dasharray: 22 400; stroke-dashoffset: -30; opacity: 1; }
+            80%, 100% { opacity: 0; }
+          }
+          .asc-sweep { stroke-dasharray: 22 400; stroke-dashoffset: 430; animation: ascSweep 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+          .asc-sweep-trail { stroke-dasharray: 22 400; stroke-dashoffset: 430; animation: ascSweep 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        </style>
+      </div>
+
+      <h3 style="font-size: 21px; font-weight: 700; color: var(--text-primary); margin: 0 0 10px 0; letter-spacing: -0.4px;">مسیر رشد شما از همین‌جا شروع می‌شود</h3>
+      <p style="font-size: 15px; color: var(--text-secondary); max-width: 340px; margin: 0 0 32px 0; line-height: 1.8;">
+        با هر مرور، این نمودار کمی روشن‌تر می‌شود. اولین قدم را بردارید و پیشرفت خود را با چشم ببینید.
+      </p>
+    `;
+
+    const actionButton = createButton({
+      label: 'شروع یادگیری',
+      icon: 'rocket_launch',
+      onClick: () => router.navigate('home')
+    });
+    
+    // Add slightly larger padding to the button to make it more prominent
+    actionButton.style.padding = '12px 24px';
+    actionButton.style.fontSize = '15px';
+    
+    emptyContainer.appendChild(actionButton);
+    container.appendChild(emptyContainer);
     return;
   }
 
@@ -9343,7 +9907,7 @@ export async function renderSettings(container) {
   const dictationMethod = await db.getSetting('dictation_method', 'auto');
   const customInstruction = await db.getSetting('gemini_system_instruction', '');
   const ttsSpeed = await db.getSetting('tts_speed', '0.95');
-  const ttsLang = await db.getSetting('tts_lang', 'fa-IR');
+  const ttsLang = await db.getSetting('tts_lang', 'en-US');
   const dailyGoal = await db.getSetting('daily_study_goal', '20');
 
   // Load customizable learning intervals from localStorage
@@ -9552,7 +10116,7 @@ export async function renderSettings(container) {
   aiContainer.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
   const connDesc = document.createElement('div');
   connDesc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary); line-height:1.6; text-align:right;';
-  connDesc.textContent = 'این اپلیکیشن کاملاً محلی است و بدون هیچ سروری کار می‌کند؛ درخواست‌های هوش مصنوعی مستقیماً از دستگاه شما به Google Gemini ارسال می‌شوند. برای استفاده، یک کلید API رایگان از Google AI Studio دریافت کرده و در زیر وارد کنید.';
+  connDesc.textContent = 'برای استفاده از قابلیت‌های هوش مصنوعی، یک کلید API رایگان از Google AI Studio دریافت کرده و در زیر وارد کنید. اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.';
   const keyField = createTextField({
     label: 'کلید API اختصاصی Gemini (از Google AI Studio)',
     placeholder: 'AIzaSy...',
@@ -9574,12 +10138,12 @@ export async function renderSettings(container) {
   // questions can use the browser's own (free, offline-capable) speech
   // recognition, AI transcription via Gemini, or automatically try native
   // first and fall back to AI if it's unavailable/fails - important once
-  // the app is packaged into an APK, where native speech recognition may
-  // not work inside the WebView. See js/core/dictation.js.
+  // on devices where native speech recognition may
+  // not work reliably. See js/core/dictation.js.
   const dictationField = createSelectField({
     label: 'روش دیکته صوتی (تبدیل گفتار به متن)',
     value: dictationMethod,
-    hint: 'در صورت تبدیل برنامه به APK، اگر گزینه «مرورگر» کار نکرد، حالت «خودکار» را انتخاب کنید تا هوش مصنوعی جایگزین آن شود.',
+    hint: 'اگر گزینه «مرورگر» در دستگاه شما کار نکرد، حالت «خودکار» را انتخاب کنید.',
     options: [
       { value: 'auto', label: 'خودکار — ابتدا مرورگر، در صورت خطا هوش مصنوعی (پیشنهادی)' },
       { value: 'native', label: 'فقط تشخیص گفتار مرورگر (بدون نیاز به کلید API)' },
@@ -9611,7 +10175,7 @@ export async function renderSettings(container) {
       await db.setSetting('gemini_system_instruction', instructionVal);
       
       if (!keyVal) {
-        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. از کلید سیستم/سرور استفاده خواهد شد.', 'success');
+        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. برای استفاده از هوش مصنوعی، وارد کردن کلید API الزامی است.', 'success');
       } else {
         showStatusMessage(aiContainer, 'تنظیمات هوش مصنوعی با موفقیت ذخیره شد.', 'success');
       }
@@ -9701,6 +10265,7 @@ export async function renderSettings(container) {
   const currentAccent = await themeApi.getAccent();
   const currentFontScale = await themeApi.getFontScale();
   const currentReducedMotion = await themeApi.getReducedMotion();
+  const currentContrastMode = await themeApi.getContrastMode();
 
   // Small reusable segmented control (used by all 3 pref rows below)
   function buildSegmented(options, currentValue, onChange) {
@@ -9857,7 +10422,103 @@ export async function renderSettings(container) {
   motionContainer.append(motionDesc, motionControl);
   const motionCard = createCard({ title: 'جلوه‌های حرکتی و انیمیشن', content: motionContainer });
 
-  appearanceTabContent.append(themeModeCard, accentCard, fontSizeCard, motionCard);
+  // 5. High Contrast Mode
+  const contrastContainer = document.createElement('div');
+  contrastContainer.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
+  const contrastDesc = document.createElement('div');
+  contrastDesc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary);';
+  contrastDesc.textContent = 'امکان تغییر تم به حالت جوهر الکترونیک (کاغذی) با رنگ‌های ملایم و بافت نویزدار برای خوانایی بهتر.';
+  const contrastControl = buildSegmented(
+    [
+      { value: 'none', label: 'عادی' },
+      { value: 'high-contrast-light', label: 'کاغذی (طوسی)' },
+      { value: 'high-contrast-dark', label: 'تاریک (طوسی)' },
+    ],
+    currentContrastMode,
+    async (pref) => {
+      await themeApi.setContrastMode(pref);
+      showStatusMessage(contrastContainer, 'تنظیمات کنتراست ذخیره شد.', 'success');
+    }
+  );
+  contrastContainer.append(contrastDesc, contrastControl);
+  const contrastCard = createCard({ title: 'فیلتر کنتراست بالا', content: contrastContainer });
+
+  // 6. Custom Fonts
+  const fontsContainer = document.createElement('div');
+  fontsContainer.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
+  const fontsDesc = document.createElement('div');
+  fontsDesc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary);';
+  fontsDesc.textContent = 'شما می‌توانید فونت دلخواه خود را (با فرمت‌های ttf, woff, otf) برای بخش‌های مختلف آپلود کنید.';
+  
+  fontsContainer.append(fontsDesc);
+
+  const fontTargets = [
+    { id: 'heading', label: 'عناوین (مانند تیترها و منوها)' },
+    { id: 'body', label: 'متن اصلی (توضیحات و محتوای فلش‌کارت‌ها)' },
+    { id: 'mono', label: 'اعداد و متن‌های سیستمی (تایمر و غیره)' }
+  ];
+
+  fontTargets.forEach(target => {
+    const targetRow = document.createElement('div');
+    targetRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:var(--bg-sunken); padding:var(--space-2); border-radius:var(--radius-input);';
+    
+    const label = document.createElement('div');
+    label.style.cssText = 'font-weight:600; font-size:var(--text-body); color:var(--text-primary);';
+    label.textContent = target.label;
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex; gap:var(--space-2);';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.ttf,.woff,.woff2,.otf';
+    fileInput.style.display = 'none';
+
+    const uploadBtn = createButton({
+      label: 'آپلود',
+      icon: 'upload',
+      variant: 'secondary',
+      onClick: () => {
+        fileInput.click();
+      }
+    });
+    
+    const resetBtn = createButton({
+      label: 'حذف',
+      icon: 'delete',
+      variant: 'text',
+      onClick: async () => {
+        await themeApi.resetCustomFont(target.id);
+        showStatusMessage(fontsContainer, 'فونت سفارشی حذف شد.', 'success');
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+         showStatusMessage(fontsContainer, 'حجم فایل فونت نباید بیشتر از 2 مگابایت باشد.', 'error');
+         return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (re) => {
+        const dataUrl = re.target.result;
+        await themeApi.setCustomFont(target.id, dataUrl);
+        showStatusMessage(fontsContainer, `فونت جدید برای ${target.label} اعمال شد.`, 'success');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    actions.append(fileInput, uploadBtn, resetBtn);
+    targetRow.append(label, actions);
+    fontsContainer.append(targetRow);
+  });
+
+  const fontsCard = createCard({ title: 'فونت‌های سفارشی', content: fontsContainer });
+
+  appearanceTabContent.append(themeModeCard, accentCard, fontSizeCard, motionCard, contrastCard, fontsCard);
 
 
   // --- TAB 4: SYSTEM & BACKUP ---
@@ -9869,7 +10530,7 @@ export async function renderSettings(container) {
   backupContainer.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
   const backupDesc = document.createElement('div');
   backupDesc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary); line-height:1.6; text-align:right;';
-  backupDesc.textContent = 'برای ایمن‌سازی اطلاعات خود، یک نسخه پشتیبان صادر و دانلود کنید. همچنین می‌توانید فایل‌های کپی ذخیره‌شده را در دیتابیس بارگذاری کنید. اگر دکمه‌ی «دانلود فایل» در نسخه‌ی نصب‌شده (APK) پاسخ نداد — که در برخی مبدل‌های HTML به APK پیش می‌آید، چون آن‌ها مدیریت دانلود فایل را پیاده‌سازی نکرده‌اند — از گزینه‌ی «نمایش/کپی متن پشتیبان» استفاده کنید؛ این روش به هیچ قابلیت خاصی از دستگاه نیاز ندارد و همیشه کار می‌کند.';
+  backupDesc.textContent = 'برای ایمن‌سازی اطلاعات خود، یک نسخه پشتیبان صادر و دانلود کنید. همچنین می‌توانید فایل‌های کپی ذخیره‌شده را بازیابی کنید. اگر دکمه «دانلود فایل» پاسخ نداد، از گزینه «نمایش/کپی متن پشتیبان» استفاده کنید — این روش همیشه کار می‌کند.';
   const backupButtonsRow = document.createElement('div');
   backupButtonsRow.style.cssText = 'display:flex; gap:var(--space-2); flex-wrap:wrap;';
   const exportBtn = createButton({
@@ -9891,7 +10552,7 @@ export async function renderSettings(container) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showStatusMessage(backupContainer, 'دانلود فایل آغاز شد. اگر روی این دستگاه (بخصوص در نسخه‌ی نصب‌شده APK) هیچ فایلی دانلود نشد، از دکمه‌ی «نمایش/کپی متن پشتیبان» به‌جای این گزینه استفاده کنید.', 'success');
+        showStatusMessage(backupContainer, 'دانلود فایل آغاز شد. اگر روی این دستگاه فایلی دانلود نشد، از دکمه «نمایش/کپی متن پشتیبان» استفاده کنید.', 'success');
       } catch (err) {
         showStatusMessage(backupContainer, `خطا در تهیه پشتیبان: ${err.message}`, 'error');
       } finally {
@@ -9900,9 +10561,8 @@ export async function renderSettings(container) {
     }
   });
 
-  // Guaranteed-to-work fallback for APK builds whose WebView wrapper
+  // Guaranteed-to-work fallback for devices that don't support file downloads.
   // doesn't implement a download handler for <a download> / blob: URLs
-  // (a very common gap in generic "HTML to APK" tools). Copies the
   // backup as plain text via the Clipboard API instead of a file
   // download, so the user can paste it anywhere (Notes app, Telegram
   // "Saved Messages", email to self, etc.) as their backup.
@@ -10029,7 +10689,7 @@ export async function renderSettings(container) {
   });
 
   // Text-based counterpart to importBtn, for the same reason as
-  // copyTextBtn above: some APK WebView wrappers never open the native
+  // copyTextBtn above: some devices never open the native
   // file picker for <input type="file"> because the host app doesn't
   // implement onShowFileChooser. Pasting text needs no native picker
   // at all, so it always works.
@@ -10129,11 +10789,11 @@ export async function renderSettings(container) {
                       await db.setSetting('dictation_method', 'auto');
                       await db.setSetting('gemini_system_instruction', '');
                       await db.setSetting('tts_speed', '0.95');
-                      await db.setSetting('tts_lang', 'fa-IR');
+                      await db.setSetting('tts_lang', 'en-US');
                       await db.setSetting('daily_study_goal', '20');
                       // BUGFIX: the custom FSRS learning-interval prefs
                       // (interval_again/hard/good/easy) live in
-                      // localStorage, not IndexedDB, so a "wipe everything"
+                      // localStorage, not the main storage, so a "wipe everything"
                       // used to silently leave them behind after this
                       // reset - the user would see empty data but their
                       // old intervals still applied.

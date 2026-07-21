@@ -1,8 +1,7 @@
 /**
  * Pomodoro Focus Timer — standalone feature.
- * Pure vanilla JS + localStorage only (no IndexedDB schema change, no new
+ * Pure vanilla JS + localStorage only. Reached from the Home page as a secondary route.
  * npm packages), so it's guaranteed to work the same after being wrapped
- * into an offline APK. Reached from the Home page as a secondary route.
  */
 import { router } from '../core/router.js';
 import { showToast } from '../core/ui.js';
@@ -388,7 +387,7 @@ export function renderPomodoro(container) {
     clearInterval(state.timerInterval);
     if (state.mode === 'focus') {
       // Skipping focus doesn't count it as completed — go straight to a short break.
-      setPhase(state.completedInCycle + 1 >= state.cyclesBeforeLong ? 'focus' : 'short', false);
+      setPhase('short', false);
     } else {
       setPhase('focus', false);
     }

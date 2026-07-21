@@ -4,13 +4,12 @@
 //
 // This app used to proxy every AI call through a local Node/Express
 // backend (server.js -> /api/gemini/...). That backend does not exist
-// once the app is packaged into an APK with a static-site wrapper
-// (web2apk, html2apk, WebView shells, etc.) — those tools only ship the
+// on various offline devices.
 // static HTML/CSS/JS, they do not run a Node server on the device.
 //
 // So instead, this module calls Google's public Generative Language
-// REST API directly from the browser/WebView, using an API key the
-// user enters and saves locally (IndexedDB via db.js). Nothing is sent
+// REST API directly from the client, using an API key the
+// user enters and saves locally. Nothing is sent
 // to any server of ours — only straight to Google's API endpoint with
 // the user's own key.
 
@@ -117,22 +116,7 @@ async function generateContentWithFallback({ apiKey, preferredModel, contents, s
 // Public: chat-style call, mirrors the old /api/gemini/chat endpoint.
 export async function chatWithGemini({ apiKey, model, message, history, systemInstruction, attachments }) {
   if (!apiKey) {
-    try {
-      const res = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history, systemInstruction, model, attachments }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new GeminiClientError(errData.error || `خطا در ارتباط با سرور داخلی (کد ${res.status})`);
-      }
-      const data = await res.json();
-      return { text: data.text };
-    } catch (err) {
-      if (err instanceof GeminiClientError) throw err;
-      throw new GeminiClientError(`خطا در ارتباط با سرور واسط: ${err.message}`);
-    }
+    throw new GeminiClientError('لطفاً ابتدا کلید API را در تنظیمات وارد کنید');
   }
 
   const contents = [];
@@ -184,22 +168,7 @@ export async function chatWithGemini({ apiKey, model, message, history, systemIn
 // Public: flashcard generation, mirrors the old /api/gemini/generate-cards endpoint.
 export async function generateCardsWithGemini({ apiKey, model, text, categoryTitle }) {
   if (!apiKey) {
-    try {
-      const res = await fetch('/api/gemini/generate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, categoryTitle, model }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new GeminiClientError(errData.error || `خطا در ارتباط با سرور داخلی (کد ${res.status})`);
-      }
-      const data = await res.json();
-      return { text: data.text };
-    } catch (err) {
-      if (err instanceof GeminiClientError) throw err;
-      throw new GeminiClientError(`خطا در ارتباط با سرور واسط: ${err.message}`);
-    }
+    throw new GeminiClientError('لطفاً ابتدا کلید API را در تنظیمات وارد کنید');
   }
 
   const systemInstruction = `شما یک دستیار هوشمند آموزشی دلسوز به زبان فارسی هستید.
@@ -212,12 +181,18 @@ export async function generateCardsWithGemini({ apiKey, model, text, categoryTit
 - بازه‌های عددی مثل [a, b) یا (a, b] را به همان شکل معمولی و بدون هیچ دستور خاصی و فقط داخل $...$ بنویس.
 - هرگز از فرمت‌های دیگر (مثل Markdown دوبل ستاره یا کد بلاک) برای فرمول استفاده نکن؛ فقط از $...$ یا $$...$$ همراه دستورات LaTeX استاندارد بالا.
 
+علاوه بر front و back، برای هر فلش‌کارت این دو فیلد را هم اضافه کن تا سیستم بتواند بعداً سوال چند گزینه‌ای و صحیح/غلط بسازد بدون اینکه گزینه‌های غلط را از فلش‌کارت‌های دیگر و نامرتبط قرض بگیرد:
+- "wrongOptions": یک آرایه شامل دقیقاً ۳ گزینه غلط اما باورپذیر و مرتبط با همان سوال (برای حالت تستی چهارگزینه‌ای)، که هیچکدام نباید با پاسخ درست یکی باشند.
+- "falseStatement": یک نسخه نادرست و کوتاه از عبارتِ پشت کارت (برای حالت صحیح/غلط)، که با پاسخ درست فرق داشته باشد.
+
 پاسخ شما باید منحصراً و بدون هیچ متنِ اضافیِ دیگر، به شکل یک آرایه معتبر JSON به فرمت زیر باشد:
 
 [
   {
     "front": "سوال روی کارت؟",
-    "back": "پاسخ پشت کارت."
+    "back": "پاسخ پشت کارت.",
+    "wrongOptions": ["گزینه غلط ۱", "گزینه غلط ۲", "گزینه غلط ۳"],
+    "falseStatement": "نسخه نادرست پاسخ پشت کارت."
   }
 ]`;
 

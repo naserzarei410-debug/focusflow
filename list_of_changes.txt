@@ -1,0 +1,147 @@
+Here are the proposed changes for review:
+
+1. `js/features/pages.js` (line 633)
+Current: `<p style="font-size: 13px; color: var(--text-secondary);">این فرآیند به صورت ۱۰۰٪ محلی در مرورگر شما انجام می‌شود.</p>`
+Proposed: `<p style="font-size: 13px; color: var(--text-secondary);">اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.</p>`
+
+2. `js/features/pages.js` (line 1096)
+Current: `<p style="font-size: 13px; color: var(--text-secondary);">این فرآیند به صورت کاملاً محلی در مرورگر شما انجام می‌شود.</p>`
+Proposed: `<p style="font-size: 13px; color: var(--text-secondary);">اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.</p>`
+
+3. `js/features/pages.js` (line 2175)
+Current: `    // Save user message to IndexedDB`
+Proposed: `    // Save user message`
+
+4. `js/features/pages.js` (line 2247)
+Current: `      // Save assistant message to IndexedDB`
+Proposed: `      // Save assistant message`
+
+5. `js/features/pages.js` (line 9886)
+Current: `  connDesc.textContent = 'این اپلیکیشن کاملاً محلی است و بدون هیچ سروری کار می‌کند؛ درخواست‌های هوش مصنوعی مستقیماً از دستگاه شما به Google Gemini ارسال می‌شوند. برای استفاده، یک کلید API رایگان از Google AI Studio دریافت کرده و در زیر وارد کنید.';`
+Proposed: `  connDesc.textContent = 'برای استفاده از قابلیت‌های هوش مصنوعی، یک کلید API رایگان از Google AI Studio دریافت کرده و در زیر وارد کنید. اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.';`
+
+6. `js/features/pages.js` (lines 9908-9909)
+Current: 
+`  // the app is packaged into an APK, where native speech recognition may`
+`  // not work inside the WebView. See js/core/dictation.js.`
+Proposed: 
+`  // on devices where native speech recognition may`
+`  // not work reliably. See js/core/dictation.js.`
+
+7. `js/features/pages.js` (line 9913)
+Current: `    hint: 'در صورت تبدیل برنامه به APK، اگر گزینه «مرورگر» کار نکرد، حالت «خودکار» را انتخاب کنید تا هوش مصنوعی جایگزین آن شود.',`
+Proposed: `    hint: 'اگر گزینه «مرورگر» در دستگاه شما کار نکرد، حالت «خودکار» را انتخاب کنید.',`
+
+8. `js/features/pages.js` (line 9945) (User requested specific change)
+Current: `        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. از کلید سیستم/سرور استفاده خواهد شد.', 'success');`
+Proposed: `        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. برای استفاده از هوش مصنوعی، وارد کردن کلید API الزامی است.', 'success');`
+
+9. `js/features/pages.js` (line 10300)
+Current: `  backupDesc.textContent = 'برای ایمن‌سازی اطلاعات خود، یک نسخه پشتیبان صادر و دانلود کنید. همچنین می‌توانید فایل‌های کپی ذخیره‌شده را در دیتابیس بارگذاری کنید. اگر دکمه‌ی «دانلود فایل» در نسخه‌ی نصب‌شده (APK) پاسخ نداد — که در برخی مبدل‌های HTML به APK پیش می‌آید، چون آن‌ها مدیریت دانلود فایل را پیاده‌سازی نکرده‌اند — از گزینه‌ی «نمایش/کپی متن پشتیبان» استفاده کنید؛ این روش به هیچ قابلیت خاصی از دستگاه نیاز ندارد و همیشه کار می‌کند.';`
+Proposed: `  backupDesc.textContent = 'برای ایمن‌سازی اطلاعات خود، یک نسخه پشتیبان صادر و دانلود کنید. همچنین می‌توانید فایل‌های کپی ذخیره‌شده را بازیابی کنید. اگر دکمه «دانلود فایل» پاسخ نداد، از گزینه «نمایش/کپی متن پشتیبان» استفاده کنید — این روش همیشه کار می‌کند.';`
+
+10. `js/features/pages.js` (line 10322)
+Current: `        showStatusMessage(backupContainer, 'دانلود فایل آغاز شد. اگر روی این دستگاه (بخصوص در نسخه‌ی نصب‌شده APK) هیچ فایلی دانلود نشد، از دکمه‌ی «نمایش/کپی متن پشتیبان» به‌جای این گزینه استفاده کنید.', 'success');`
+Proposed: `        showStatusMessage(backupContainer, 'دانلود فایل آغاز شد. اگر روی این دستگاه فایلی دانلود نشد، از دکمه «نمایش/کپی متن پشتیبان» استفاده کنید.', 'success');`
+
+11. `js/features/pages.js` (lines 10331-10333)
+Current: 
+`  // Guaranteed-to-work fallback for APK builds whose WebView wrapper`
+`  // (a very common gap in generic "HTML to APK" tools). Copies the`
+Proposed:
+`  // Guaranteed-to-work fallback for devices that don't support file downloads.`
+`  // Copies the`
+
+12. `js/features/pages.js` (line 10460)
+Current: `  // copyTextBtn above: some APK WebView wrappers never open the native`
+Proposed: `  // copyTextBtn above: some devices never open the native`
+
+13. `js/features/pages.js` (line 10564)
+Current: `                      // localStorage, not IndexedDB, so a "wipe everything"`
+Proposed: `                      // localStorage, not the main storage, so a "wipe everything"`
+
+14. `js/features/category.js` (line 34)
+Current: `// into IndexedDB. IndexedDB has no hard size limit, but multi-MB images`
+Proposed: `// into storage. Storage has no hard size limit, but multi-MB images`
+
+15. `js/features/pomodoro.js` (lines 3-5)
+Current: 
+` * Pure vanilla JS + localStorage only (no IndexedDB schema change, no new`
+` * imports needed). This ensures it works seamlessly even when converted`
+` * into an offline APK. Reached from the Home page as a secondary route.`
+Proposed:
+` * Pure vanilla JS + localStorage only. Reached from the Home page as a secondary route.`
+
+16. `js/features/practice-session.js` (line 932)
+Current: `      // 1. Log Session record to IndexedDB (Integrating with stats calculations)`
+Proposed: `      // 1. Log Session record (Integrating with stats calculations)`
+
+17. `js/features/library.js` (line 103)
+Current: `    // IndexedDB.`
+Proposed: `    // local storage.`
+
+18. `js/core/gemini-client.js` (lines 7-8, 12-13)
+Current:
+`// once the app is packaged into an APK with a static-site wrapper`
+`// (web2apk, html2apk, WebView shells, etc.) — those tools only ship the`
+...
+`// REST API directly from the browser/WebView, using an API key the`
+`// user enters and saves locally (IndexedDB via db.js). Nothing is sent`
+Proposed:
+`// on various offline devices.`
+...
+`// REST API directly from the client, using an API key the`
+`// user enters and saves locally. Nothing is sent`
+
+19. `js/core/gemini-client.js` (lines 119-136, 186-203)
+User requested removing the fallback block entirely and replacing it with:
+```javascript
+  if (!apiKey) {
+    throw new GeminiClientError('لطفاً ابتدا کلید API را در تنظیمات وارد کنید');
+  }
+```
+
+20. `js/core/tts.js` (line 135)
+Current: ` * Uses standard HTML5 Audio which is supported inside WebView/APK`
+Proposed: ` * Uses standard HTML5 Audio.`
+
+21. `js/core/tts.js` (line 241)
+Current: ` * NOTE: on stock Android WebView (the engine behind html2app.dev-style`
+Proposed: ` * NOTE: on some Android devices`
+
+22. `js/core/dictation.js` (lines 20-37)
+Current:
+` * reliable once the app is wrapped into an APK with tools like`
+` *   1. "native"  - the browser/WebView's built-in SpeechRecognition`
+` *                  Android WebView shells used by APK-conversion tools`
+` *                  Gemini for transcription. Works in any WebView that`
+` * hangs (no result within a few seconds - a known WebView failure`
+Proposed:
+` * reliable on various devices.`
+` *   1. "native"  - the device's built-in SpeechRecognition`
+` *                  some Android devices.`
+` *                  Gemini for transcription. Works on any device that`
+` * hangs (no result within a few seconds - a known failure`
+
+23. `js/core/dictation.js` (line 101)
+Current: `// Backend 1: native browser/WebView SpeechRecognition`
+Proposed: `// Backend 1: native device SpeechRecognition`
+
+24. `js/core/dictation.js` (line 139)
+Current: `    // Some Android WebView shells (the kind produced by APK-conversion`
+Proposed: `    // Some Android devices`
+
+25. `js/core/ui.js` (lines 260-262, 267)
+Current:
+` * WHY: native <select> popups rely on the WebView's own browser-chrome`
+` * UI to render the options list. Many generic "HTML to APK" wrappers`
+` * (including WebView-based ones like html2app.dev) don't implement`
+` * the same inside any WebView, with no dependency on browser chrome.`
+Proposed:
+` * WHY: native <select> popups rely on the device's own UI`
+` * to render the options list. Some devices don't implement`
+` * the same on any device.`
+
+26. `js/core/ui.js` (line 861)
+Current: ` * access — important since the APK build has no bundler/CDN access`
+Proposed: ` * access`

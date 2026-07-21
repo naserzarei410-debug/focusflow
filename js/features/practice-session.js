@@ -8,6 +8,7 @@ import { categoryRepository, flashcardRepository, studySessionRepository } from 
 import { router } from '../core/router.js';
 import { speak, isSpeechSupported } from '../core/tts.js';
 import { attachDictationButton, stopAnyActiveDictation } from '../core/dictation.js';
+import { openAiExplanationBottomSheet } from './ai-explanation.js';
 
 // Every dictation button created while this view is mounted registers its
 // controller here, so we can cleanly cancel any in-flight recording when
@@ -328,7 +329,14 @@ export async function renderPracticeSession(container, categoryId = null) {
     const questions = selectedCards.map((card, idx) => {
       let qType;
       const isCloze = /[\.]{3,}/.test(textOf(card.frontContent));
-      if (isCloze && allowedTypes.includes('blank')) {
+      // A card the user (or the AI) explicitly authored as a specific quiz
+      // type takes priority — that's what lets it carry its own
+      // hand-written wrong options instead of borrowing them from
+      // unrelated cards.
+      const forcedType = card.answerType && card.answerType !== 'auto' ? card.answerType : null;
+      if (forcedType && allowedTypes.includes(forcedType)) {
+        qType = forcedType;
+      } else if (isCloze && allowedTypes.includes('blank')) {
         qType = 'blank';
       } else {
         // Exclude 'blank' if card is not cloze so we don't randomly mask normal cards
@@ -351,13 +359,22 @@ export async function renderPracticeSession(container, categoryId = null) {
     const aText = textOf(card.backContent);
 
     if (type === 'choice') {
-      // Pick 3 distractors from the full list that are NOT the correct card
-      const others = fullList.filter(c => c.id !== card.id);
-      const distractors = others
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.min(3, others.length))
-        .map(c => textOf(c.backContent));
-      
+      const authoredOptions = (card.choiceOptions || []).map((s) => (s || '').trim()).filter(Boolean);
+      let distractors;
+      if (authoredOptions.length > 0) {
+        // The user (or the AI) wrote these wrong options specifically for
+        // this card, so they always relate to the actual question.
+        distractors = authoredOptions.slice(0, 3);
+      } else {
+        // No authored options: fall back to the old behaviour of borrowing
+        // answers from other cards in the category.
+        const others = fullList.filter(c => c.id !== card.id);
+        distractors = others
+          .sort(() => 0.5 - Math.random())
+          .slice(0, Math.min(3, others.length))
+          .map(c => textOf(c.backContent));
+      }
+
       // Shuffle correct answer and distractors
       const options = [aText, ...distractors].sort(() => 0.5 - Math.random());
       const correctIdx = options.indexOf(aText);
@@ -379,10 +396,18 @@ export async function renderPracticeSession(container, categoryId = null) {
       let match = true;
 
       if (!isTrue) {
-        const others = fullList.filter(c => c.id !== card.id);
-        if (others.length > 0) {
-          displayAnswer = textOf(others[Math.floor(Math.random() * others.length)].backContent);
+        const authoredFalse = (card.falseStatement || '').trim();
+        if (authoredFalse) {
+          // The user (or the AI) wrote this false version specifically for
+          // this card's statement.
+          displayAnswer = authoredFalse;
           match = false;
+        } else {
+          const others = fullList.filter(c => c.id !== card.id);
+          if (others.length > 0) {
+            displayAnswer = textOf(others[Math.floor(Math.random() * others.length)].backContent);
+            match = false;
+          }
         }
       }
 
@@ -531,14 +556,30 @@ export async function renderPracticeSession(container, categoryId = null) {
       const qTypeTitle = { choice: 'سوال تستی چند گزینه‌ای', tf: 'ارزیابی گزاره (صحیح/غلط)', blank: 'تکمیل عبارت (جای خالی)', short: 'پاسخ تشریحی کوتاه' }[q.type];
 
       const typeBadge = document.createElement('div');
-      typeBadge.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--color-primary); background:var(--color-primary-soft); padding:4px 10px; border-radius:var(--radius-pill); align-self:flex-start; margin-bottom:4px;';
+      typeBadge.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--color-primary); background:var(--color-primary-soft); padding:4px 10px; border-radius:var(--radius-pill); align-self:flex-start;';
       typeBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">${qIconType}</span><span>${qTypeTitle}</span>`;
       
+      const aiExplainBtn = document.createElement('button');
+      aiExplainBtn.className = 'icon-btn';
+      aiExplainBtn.setAttribute('aria-label', 'توضیح با هوش مصنوعی');
+      aiExplainBtn.style.cssText = 'width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--color-primary); cursor: pointer; transition: transform var(--duration-fast), background-color var(--duration-fast);';
+      aiExplainBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:20px;">psychology</span>';
+      aiExplainBtn.addEventListener('click', () => {
+        const backText = textOf(q.card.backContent);
+        openAiExplanationBottomSheet(q.prompt, backText);
+      });
+      aiExplainBtn.addEventListener('mouseenter', () => { aiExplainBtn.style.transform = 'scale(1.08)'; aiExplainBtn.style.backgroundColor = 'var(--color-primary-soft)'; });
+      aiExplainBtn.addEventListener('mouseleave', () => { aiExplainBtn.style.transform = 'scale(1.0)'; aiExplainBtn.style.backgroundColor = 'transparent'; });
+
+      const headerRow = document.createElement('div');
+      headerRow.style.cssText = 'display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:4px;';
+      headerRow.append(typeBadge, aiExplainBtn);
+
       const promptText = document.createElement('div');
       promptText.style.cssText = 'font-size:var(--text-title); font-weight:700; color:var(--text-primary); line-height:var(--lh-normal); margin-top:4px; white-space:pre-line;';
       promptText.innerHTML = renderFractionsInText(escapeHtml(q.prompt));
 
-      questionCard.append(typeBadge, promptText);
+      questionCard.append(headerRow, promptText);
       playWrap.appendChild(questionCard);
 
       // Interaction Zone - varies by Question Type
@@ -713,7 +754,11 @@ export async function renderPracticeSession(container, categoryId = null) {
           icon: 'verified',
           variant: 'primary',
           onClick: () => {
-            if (!textInput.value.trim()) return;
+            if (!textInput.value.trim()) {
+              textInput.style.borderColor = 'var(--color-danger)';
+              textInput.focus();
+              return;
+            }
             textInput.disabled = true;
             subBtn.disabled = true;
 
@@ -884,7 +929,7 @@ export async function renderPracticeSession(container, categoryId = null) {
 
       const accuracy = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
 
-      // 1. Log Session record to IndexedDB (Integrating with stats calculations)
+      // 1. Log Session record (Integrating with stats calculations)
       const sessionRecord = {
         id: `practice_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         categoryId,

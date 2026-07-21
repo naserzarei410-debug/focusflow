@@ -1,6 +1,6 @@
 import {
   createButton, createCard, createEmptyState, createProgressBar,
-  createTextField, createTextArea, openDialog
+  createTextField, createTextArea, openDialog, showToast
 } from '../core/ui.js';
 import { categoryRepository, flashcardRepository, aiConversationRepository, examRepository, examResultRepository } from '../core/repositories.js';
 import { router } from '../core/router.js';
@@ -100,7 +100,7 @@ export async function renderLibrary(container) {
   async function deleteCategoryCascade(categoryId) {
     // Remove the category itself plus everything scoped to it, so no
     // orphaned flashcards / conversations / exams are left behind in
-    // IndexedDB.
+    // local storage.
     try {
       const cards = await flashcardRepository.getByIndex('categoryId', categoryId);
       for (const card of cards) {
@@ -302,7 +302,11 @@ function openAddCategoryDialog(onSuccess) {
         label: 'ایجاد دسته',
         variant: 'primary',
         onClick: async () => {
-          if (!title.trim()) return;
+          if (!title.trim()) {
+            showToast('لطفاً عنوان دسته را وارد کنید.', 'error');
+            titleField.input.focus();
+            return false;
+          }
           const newCat = createCategoryModel({
             title: title.trim(),
             description: description.trim(),

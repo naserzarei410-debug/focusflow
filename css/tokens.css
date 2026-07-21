@@ -186,3 +186,110 @@ html.reduce-motion { --motion-scale: 0.01; }
 @media (prefers-reduced-motion: reduce) {
   html:not(.motion-force-on) { --motion-scale: 0.01; }
 }
+
+/* High Contrast Modes */
+[data-contrast="high-contrast-light"] {
+  --color-primary: #444444 !important;
+  --color-primary-soft: rgba(0, 0, 0, 0.06) !important;
+  --color-primary-hover: #222222 !important;
+  --text-on-primary: #FFFFFF !important;
+  
+  --color-secondary: #555555 !important;
+  --color-secondary-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-accent: #666666 !important;
+  --color-accent-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-danger: #555555 !important;
+  --color-danger-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-warning: #666666 !important;
+  --color-warning-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-success: #444444 !important;
+  --color-success-soft: rgba(0, 0, 0, 0.04) !important;
+
+  --bg-primary: #EAEAEA !important; 
+  --bg-secondary: transparent !important;
+  --bg-card: rgba(255, 255, 255, 0.6) !important; 
+  --bg-elevated: #FFFFFF !important;
+  --bg-sunken: #D8D8D8 !important;
+  
+  --border-strong: rgba(0, 0, 0, 0.15) !important;
+  --border-soft: rgba(0, 0, 0, 0.08) !important;
+  --border-subtle: rgba(0, 0, 0, 0.04) !important;
+  
+  --text-primary: #111111 !important;
+  --text-secondary: #444444 !important;
+  --text-tertiary: #777777 !important;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-contrast="high-contrast-light"] body {
+  background-color: #EAEAEA !important;
+  background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.08"/%3E%3C/svg%3E') !important;
+  background-attachment: fixed !important;
+}
+
+[data-contrast="high-contrast-light"] .topbar,
+[data-contrast="high-contrast-light"] .bottom-nav {
+  background-color: rgba(234, 234, 234, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-contrast="high-contrast-dark"] {
+  --color-primary: #BBBBBB !important;
+  --color-primary-soft: rgba(255, 255, 255, 0.1) !important;
+  --color-primary-hover: #DDDDDD !important;
+  --text-on-primary: #000000 !important;
+  
+  --color-secondary: #AAAAAA !important;
+  --color-secondary-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-accent: #999999 !important;
+  --color-accent-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-danger: #AAAAAA !important;
+  --color-danger-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-warning: #999999 !important;
+  --color-warning-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-success: #BBBBBB !important;
+  --color-success-soft: rgba(255, 255, 255, 0.08) !important;
+
+  --bg-primary: #1A1A1A !important; 
+  --bg-secondary: transparent !important;
+  --bg-card: rgba(255, 255, 255, 0.05) !important; 
+  --bg-elevated: #2A2A2A !important;
+  --bg-sunken: #0D0D0D !important;
+  
+  --border-strong: rgba(255, 255, 255, 0.15) !important;
+  --border-soft: rgba(255, 255, 255, 0.08) !important;
+  --border-subtle: rgba(255, 255, 255, 0.04) !important;
+  
+  --text-primary: #EEEEEE !important;
+  --text-secondary: #BBBBBB !important;
+  --text-tertiary: #888888 !important;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-contrast="high-contrast-dark"] body {
+  background-color: #1A1A1A !important;
+  background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.08"/%3E%3C/svg%3E') !important;
+  background-attachment: fixed !important;
+}
+
+[data-contrast="high-contrast-dark"] .topbar,
+[data-contrast="high-contrast-dark"] .bottom-nav {
+  background-color: rgba(26, 26, 26, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}

@@ -17,24 +17,24 @@ import { db } from './db.js';
  *
  * This module provides ONE dictation engine with two backends and an
  * automatic fallback between them, because neither backend alone is
- * reliable once the app is wrapped into an APK with tools like
+ * reliable on various devices.
  * web2apk/html2apk:
  *
- *   1. "native"  - the browser/WebView's built-in SpeechRecognition
+ *   1. "native"  - the device's built-in SpeechRecognition
  *                  API. Free, fast, needs no API key - but many
- *                  Android WebView shells used by APK-conversion tools
+ *                  some Android devices.
  *                  either don't implement it at all, or expose the
  *                  constructor but never actually deliver a result
  *                  (no on-device speech service behind it).
  *
  *   2. "ai"      - records raw audio (MediaRecorder) and sends it to
- *                  Gemini for transcription. Works in any WebView that
+ *                  Gemini for transcription. Works on any device that
  *                  allows microphone access + internet access, but
  *                  needs the user's Gemini API key and a network call.
  *
  * In "auto" mode (the default) the button always tries native speech
  * recognition first. If it's unsupported, errors out, or silently
- * hangs (no result within a few seconds - a known WebView failure
+ * hangs (no result within a few seconds - a known failure
  * mode), it transparently switches to the AI backend for that same
  * click, so the user just sees "recording -> processing -> text
  * appears" either way. Users who know their environment can also force
@@ -98,7 +98,7 @@ export function stopAnyActiveDictation() {
 }
 
 // ---------------------------------------------------------------------
-// Backend 1: native browser/WebView SpeechRecognition
+// Backend 1: native device SpeechRecognition
 // ---------------------------------------------------------------------
 function getSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -136,7 +136,7 @@ function runNativeRecognition(lang, requestStop) {
       fn();
     };
 
-    // Some Android WebView shells (the kind produced by APK-conversion
+    // Some Android devices
     // tools) expose `webkitSpeechRecognition` as a constructor but have
     // no actual speech service behind it: start() never fires onstart
     // or onresult, and just hangs silently. Detect that and bail out to

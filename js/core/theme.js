@@ -2,6 +2,8 @@ import { db } from './db.js';
 
 const ACCENTS = ['blue', 'violet', 'teal', 'amber', 'rose', 'slate'];
 const FONT_SCALES = ['sm', 'md', 'lg'];
+const CONTRAST_MODES = ['none', 'high-contrast-light', 'high-contrast-dark'];
+const FONT_TARGETS = ['heading', 'body', 'mono'];
 
 let mediaQuery = null;
 let mediaListener = null;
@@ -36,6 +38,44 @@ function applyReducedMotionClass(pref) {
   // pref === 'system' (default): neither class, CSS media query decides.
 }
 
+function applyContrastMode(contrast) {
+  if (!contrast || contrast === 'none') {
+    document.documentElement.removeAttribute('data-contrast');
+  } else if (CONTRAST_MODES.includes(contrast)) {
+    document.documentElement.setAttribute('data-contrast', contrast);
+  }
+}
+
+async function applyCustomFonts() {
+  let styleEl = document.getElementById('custom-fonts-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'custom-fonts-style';
+    document.head.appendChild(styleEl);
+  }
+  
+  let cssText = '';
+  
+  for (const target of FONT_TARGETS) {
+    const fontDataUrl = await db.getSetting(`custom_font_${target}`);
+    if (fontDataUrl) {
+      const familyName = `CustomFont${target.charAt(0).toUpperCase() + target.slice(1)}`;
+      cssText += `
+        @font-face {
+          font-family: '${familyName}';
+          src: url('${fontDataUrl}');
+          font-display: swap;
+        }
+        :root {
+          --font-${target}: '${familyName}', sans-serif !important;
+        }
+      `;
+    }
+  }
+  
+  styleEl.textContent = cssText;
+}
+
 export const theme = {
   async initTheme() {
     const mode = await db.getSetting('theme_mode', 'light');
@@ -52,6 +92,11 @@ export const theme = {
 
     const reducedMotion = await db.getSetting('reduced_motion', 'system');
     applyReducedMotionClass(reducedMotion);
+    
+    const contrastMode = await db.getSetting('contrast_mode', 'none');
+    applyContrastMode(contrastMode);
+
+    await applyCustomFonts();
 
     return resolved;
   },
@@ -141,4 +186,30 @@ export const theme = {
     await db.setSetting('reduced_motion', pref);
     return pref;
   },
+
+  // --- Contrast Mode ---
+  contrastModes: CONTRAST_MODES,
+  async getContrastMode() {
+    return db.getSetting('contrast_mode', 'none');
+  },
+  async setContrastMode(mode) {
+    const value = CONTRAST_MODES.includes(mode) ? mode : 'none';
+    applyContrastMode(value);
+    await db.setSetting('contrast_mode', value);
+    return value;
+  },
+  
+  // --- Custom Fonts ---
+  async setCustomFont(target, dataUrl) {
+    if (FONT_TARGETS.includes(target)) {
+      await db.setSetting(`custom_font_${target}`, dataUrl);
+      await applyCustomFonts();
+    }
+  },
+  async resetCustomFont(target) {
+    if (FONT_TARGETS.includes(target)) {
+      await db.deleteSetting(`custom_font_${target}`);
+      await applyCustomFonts();
+    }
+  }
 };

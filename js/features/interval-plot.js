@@ -230,8 +230,8 @@ export function initInteractiveInterval(card) {
   const valRange = maxVal - minVal;
   const padding = valRange * 0.15 || 2;
 
-  const width = svgEl.clientWidth || 350;
-  const height = svgEl.clientHeight || 160;
+  const width = 350;
+  const height = 160;
   
   const margin = { top: 20, right: 30, bottom: 40, left: 30 };
   const yAxis = height - 40;

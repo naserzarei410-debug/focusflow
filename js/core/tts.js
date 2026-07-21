@@ -6,15 +6,73 @@ import { showToast } from './ui.js';
 let activeAudio = null;
 let activeAudioToken = 0;
 
+const PERSIAN_ARABIC_REGEX = /[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
 /**
- * Detects whether the given text is primarily Persian/Arabic or Latin-based.
+ * Persian text-to-speech isn't supported (no reliable free engine), but
+ * flashcards routinely mix an English term inside a Persian sentence
+ * (e.g. "معنی apple چیست؟"). Previously ANY Persian character anywhere in
+ * the text caused the whole request to be rejected, so the English word
+ * right next to it never got read either. Instead, strip out the
+ * Persian/Arabic runs and speak whatever Latin/English text remains.
  */
-function detectLanguage(text) {
-  const faRegex = /[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  if (faRegex.test(text)) {
-    return 'fa-IR';
+function extractSpeakableText(text) {
+  return text
+    .replace(new RegExp(PERSIAN_ARABIC_REGEX.source, 'g'), ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Converts a base64-encoded raw PCM audio payload (as returned by Gemini's
+ * native TTS models — typically mime type "audio/L16;codec=pcm;rate=24000",
+ * i.e. headerless 16-bit signed little-endian samples) into a playable WAV
+ * data URL by prepending a standard 44-byte WAV header. Without this, the
+ * <audio> element has no idea how to decode the raw sample bytes and
+ * playback silently fails — which is why Gemini TTS never actually played
+ * anything before this fix, even when the API call itself succeeded.
+ */
+function pcmBase64ToWavDataUrl(base64Data, mimeType) {
+  const rateMatch = /rate=(\d+)/i.exec(mimeType || '');
+  const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+  const channels = 1;
+  const bitsPerSample = 16;
+
+  const binary = atob(base64Data);
+  const pcmBytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) pcmBytes[i] = binary.charCodeAt(i);
+
+  const blockAlign = channels * (bitsPerSample / 8);
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = pcmBytes.length;
+  const wavBytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(wavBytes.buffer);
+
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  wavBytes.set(pcmBytes, 44);
+
+  let binaryOut = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < wavBytes.length; i += chunkSize) {
+    binaryOut += String.fromCharCode.apply(null, wavBytes.subarray(i, i + chunkSize));
   }
-  return 'en-US';
+  return `data:audio/wav;base64,${btoa(binaryOut)}`;
 }
 
 /**
@@ -74,7 +132,7 @@ function playAndVerify(audio, timeoutMs = 6000) {
 
 /**
  * Helper to speak using online Google Translate TTS API.
- * Uses standard HTML5 Audio which is supported inside WebView/APK
+ * Uses standard HTML5 Audio.
  * environments. Tries two known-working client params in sequence and
  * verifies real playback before declaring success (see playAndVerify).
  */
@@ -93,7 +151,6 @@ async function playOnlineTts(text, lang) {
     const myToken = ++activeAudioToken;
     const audio = new Audio();
     audio.preload = 'auto';
-    audio.crossOrigin = 'anonymous';
     activeAudio = audio;
     audio.src = url;
     try {
@@ -161,8 +218,15 @@ async function playGeminiTts(text, lang, apiKey) {
   }
 
   const base64Data = part.inlineData.data;
-  const mimeType = part.inlineData.mimeType || 'audio/wav';
-  const audioUrl = `data:${mimeType};base64,${base64Data}`;
+  const mimeType = part.inlineData.mimeType || 'audio/L16;rate=24000';
+  // Gemini's native TTS returns headerless raw PCM samples, not a
+  // ready-to-play file. <audio> silently fails to decode that, so wrap it
+  // in a minimal WAV header first (see pcmBase64ToWavDataUrl above). If a
+  // future response ever already announces a real container format (wav/
+  // mp3/ogg) via its mimeType, play it as-is instead of double-wrapping it.
+  const audioUrl = /wav|mpeg|mp3|ogg/i.test(mimeType)
+    ? `data:${mimeType};base64,${base64Data}`
+    : pcmBase64ToWavDataUrl(base64Data, mimeType);
 
   const myToken = ++activeAudioToken;
   const audio = new Audio(audioUrl);
@@ -174,7 +238,7 @@ async function playGeminiTts(text, lang, apiKey) {
 
 /**
  * Helper to fall back to the browser's native SpeechSynthesis API.
- * NOTE: on stock Android WebView (the engine behind html2app.dev-style
+ * NOTE: on some Android devices
  * APKs) `'speechSynthesis' in window` is simply false — this tier is a
  * bonus for real browsers/PWAs and silently no-ops on plain APKs, by
  * design, so it must never be the *only* tier relied on.
@@ -233,8 +297,13 @@ export async function speak(text, lang) {
 
   const cleanText = String(text).trim();
 
-  // TTS Language check: Reject pure Persian text
-  if (detectLanguage(cleanText) === 'fa-IR') {
+  // Persian TTS itself isn't supported (no reliable free engine), but we
+  // shouldn't throw away an English word just because it's sitting next
+  // to Persian text in the same flashcard. Strip the Persian/Arabic runs
+  // and speak whatever Latin/English text remains; only refuse outright
+  // if nothing speakable is left.
+  const speakableText = extractSpeakableText(cleanText);
+  if (!speakableText) {
     showToast('تلفظ صوتی برای زبان فارسی پشتیبانی نمی‌شود.', 'error');
     return false;
   }
@@ -264,7 +333,7 @@ export async function speak(text, lang) {
       const apiKey = await db.getSetting('gemini_api_key', '');
       if (apiKey) {
         try {
-          const success = await playGeminiTts(cleanText, detectedLang, apiKey);
+          const success = await playGeminiTts(speakableText, detectedLang, apiKey);
           if (success) return true;
         } catch (geminiError) {
           errors.push(`Gemini TTS: ${geminiError.message || geminiError}`);
@@ -274,7 +343,7 @@ export async function speak(text, lang) {
 
       // Tier 2: Try Google Translate TTS, with real success verification.
       try {
-        const success = await playOnlineTts(cleanText, detectedLang);
+        const success = await playOnlineTts(speakableText, detectedLang);
         if (success) return true;
       } catch (onlineError) {
         errors.push(`Google TTS: ${onlineError.message || onlineError}`);
@@ -285,10 +354,10 @@ export async function speak(text, lang) {
     }
 
     // Tier 3. Offline / Fallback: Native Web Speech API (no-ops on most APKs)
-    const success = await playNativeTts(cleanText, detectedLang, rate);
+    const success = await playNativeTts(speakableText, detectedLang, rate);
     if (success) return true;
 
-    console.warn('All TTS channels failed for text:', cleanText, errors);
+    console.warn('All TTS channels failed for text:', speakableText, errors);
     return false;
   } catch (e) {
     console.error('All TTS channels failed:', e);

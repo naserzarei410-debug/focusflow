@@ -147,15 +147,35 @@ export function openDialog({ title, content, body, actions = [] }) {
 
   const actionsEl = document.createElement('div');
   actionsEl.style.cssText = 'display:flex;justify-content:flex-end;gap:var(--space-2);';
-  
+
+  // Tracks whether an action's async onClick is still running, so a fast
+  // double-tap (very common on mobile) can't fire the handler twice and
+  // create duplicate records (e.g. two categories from one "create" tap).
+  let actionInFlight = false;
+
   actions.forEach(action => {
     const btn = createButton({
       label: action.label,
       variant: action.variant || 'secondary',
       onClick: async (e) => {
+        if (actionInFlight) return;
         if (action.onClick) {
-          const result = await action.onClick(e);
-          if (result === false || action.keepOpen) return;
+          actionInFlight = true;
+          actionsEl.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+          try {
+            const result = await action.onClick(e);
+            if (result === false || action.keepOpen) {
+              actionInFlight = false;
+              actionsEl.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+              return;
+            }
+          } catch (err) {
+            console.error('Dialog action failed', err);
+            actionInFlight = false;
+            actionsEl.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+            showToast('خطایی رخ داد. دوباره تلاش کنید.', 'error');
+            return;
+          }
         }
         if (!action.keepOpen) {
           overlay.remove();
@@ -237,14 +257,14 @@ export function createTextField({ label, placeholder, value = '', onInput, id, t
 /**
  * Custom dropdown/select that does NOT use a native <select> element.
  *
- * WHY: native <select> popups rely on the WebView's own browser-chrome
- * UI to render the options list. Many generic "HTML to APK" wrappers
- * (including WebView-based ones like html2app.dev) don't implement
+ * WHY: native <select> popups rely on the device's own UI
+ * to render the options list.
+ * Some devices don't implement
  * this popup at all, so tapping a <select> silently does nothing —
  * the dropdown never opens. This component reimplements the same
  * "pick one option" interaction entirely with our own DOM + the
  * existing openBottomSheet() component, so it's guaranteed to work
- * the same inside any WebView, with no dependency on browser chrome.
+ * the same on any device.
  *
  * API is kept close to a native select for easy call-site swaps:
  * the returned wrapper element exposes a `.value` getter/setter.
@@ -451,7 +471,7 @@ export function createProgressRing(progress = 0, radius = 24, stroke = 4) {
   return svg;
 }
 
-export function createLoadingInline() {
+export function createLoadingInline(customText) {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:inline-flex;align-items:center;gap:var(--space-2);color:var(--text-secondary);font-size:13px;';
   
@@ -461,11 +481,27 @@ export function createLoadingInline() {
   spinner.style.height = '16px';
   spinner.style.borderWidth = '2px';
   
-  const text = document.createElement('span');
-  text.textContent = 'در حال پردازش...';
-
   wrap.appendChild(spinner);
-  wrap.appendChild(text);
+
+  if (customText !== null) {
+    const text = document.createElement('span');
+    text.textContent = customText || 'در حال پردازش...';
+    wrap.appendChild(text);
+  }
+  
+  return wrap;
+}
+
+export function createTypingIndicator() {
+  const wrap = document.createElement('div');
+  wrap.className = 'typing-indicator';
+  
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'typing-dot';
+    wrap.appendChild(dot);
+  }
+  
   return wrap;
 }
 
@@ -822,7 +858,7 @@ export const LATEX_SYMBOL_MAP = [
  * inside a $...$ / $$...$$ delimiter, or a bare \frac{}{} expression).
  * Intentionally a lightweight, dependency-free subset renderer (not a
  * full LaTeX engine) so it needs no external library and no network
- * access — important since the APK build has no bundler/CDN access
+ * access
  * guarantee. It covers the constructs a flashcard-generation AI
  * realistically produces: fractions, exponents/indices, roots, set &
  * relation symbols, Greek letters, intervals (which are just plain

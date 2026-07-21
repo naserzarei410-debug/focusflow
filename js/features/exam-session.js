@@ -2,7 +2,8 @@
 
 import {
   createButton, createCard, createEmptyState, createProgressBar,
-  createProgressRing, createTextArea, openDialog, renderFractionsInText, escapeHtml
+  createProgressRing, createTextArea, openDialog, renderFractionsInText, escapeHtml,
+  createSelectField
 } from '../core/ui.js';
 import { categoryRepository, flashcardRepository, examRepository, examResultRepository, studySessionRepository } from '../core/repositories.js';
 import { router } from '../core/router.js';
@@ -116,30 +117,20 @@ export async function renderExamSession(container, categoryId = null) {
     const countSection = document.createElement('div');
     countSection.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
     countSection.innerHTML = '<span style="font-weight:700; font-size:var(--text-body); color:var(--text-primary);">تعداد سوالات آزمون:</span>';
-    
-    const countSelect = document.createElement('select');
-    countSelect.className = 'ds-field-input';
-    countSelect.style.cssText = 'width:100%; padding:var(--space-2); border-radius:8px;';
-    
+
     const availableCounts = [5, 10, 15, 20, 30, 50].filter(c => c <= activeCards.length);
-    availableCounts.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = `${c.toLocaleString('fa-IR')} سوال`;
-      countSelect.appendChild(opt);
-    });
+    const countOptions = availableCounts.map((c) => ({ value: c, label: `${c.toLocaleString('fa-IR')} سوال` }));
     // Option for ALL
-    const optAll = document.createElement('option');
-    optAll.value = activeCards.length;
-    optAll.textContent = `همه فلش‌کارت‌ها (${activeCards.length.toLocaleString('fa-IR')} سوال)`;
-    countSelect.appendChild(optAll);
+    countOptions.push({ value: activeCards.length, label: `همه فلش‌کارت‌ها (${activeCards.length.toLocaleString('fa-IR')} سوال)` });
     // Custom exact-count option: lets the user type the precise number of
     // questions instead of only choosing from fixed steps of 5/10/15...
-    const optCustom = document.createElement('option');
-    optCustom.value = 'custom';
-    optCustom.textContent = 'دلخواه (وارد کردن تعداد دقیق)';
-    countSelect.appendChild(optCustom);
-    countSelect.value = availableCounts.length > 0 ? availableCounts[Math.min(1, availableCounts.length - 1)] : activeCards.length;
+    countOptions.push({ value: 'custom', label: 'دلخواه (وارد کردن تعداد دقیق)' });
+    const defaultCount = availableCounts.length > 0 ? availableCounts[Math.min(1, availableCounts.length - 1)] : activeCards.length;
+    const countSelect = createSelectField({
+      options: countOptions,
+      value: defaultCount,
+      onChange: (val) => { customCountInput.style.display = val === 'custom' ? 'block' : 'none'; },
+    });
     countSection.appendChild(countSelect);
 
     const customCountInput = document.createElement('input');
@@ -151,10 +142,6 @@ export async function renderExamSession(container, categoryId = null) {
     customCountInput.placeholder = `عدد بین ۱ تا ${activeCards.length.toLocaleString('fa-IR')}`;
     customCountInput.style.cssText = 'width:100%; padding:var(--space-2); border-radius:8px; display:none;';
     countSection.appendChild(customCountInput);
-
-    countSelect.addEventListener('change', () => {
-      customCountInput.style.display = countSelect.value === 'custom' ? 'block' : 'none';
-    });
 
     configCard.appendChild(countSection);
 
@@ -226,29 +213,17 @@ export async function renderExamSession(container, categoryId = null) {
     const timerSection = document.createElement('div');
     timerSection.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
     timerSection.innerHTML = '<span style="font-weight:700; font-size:var(--text-body); color:var(--text-primary);">مدت زمان آزمون (محدودیت):</span>';
-    
-    const timerSelect = document.createElement('select');
-    timerSelect.className = 'ds-field-input';
-    timerSelect.style.cssText = 'width:100%; padding:var(--space-2); border-radius:8px;';
-    
+
     const timerOptions = [
-      { val: 0, label: 'بدون محدودیت زمانی (آزاد)' },
-      { val: 1, label: '۱ دقیقه' },
-      { val: 2, label: '۲ دقیقه' },
-      { val: 5, label: '۵ دقیقه' },
-      { val: 10, label: '۱۰ دقیقه' },
-      { val: 15, label: '۱۵ دقیقه' },
-      { val: 20, label: '۲۰ دقیقه' },
-      { val: 'custom', label: 'زمان سفارشی (وارد کردن به دقیقه)...' },
+      { value: 0, label: 'بدون محدودیت زمانی (آزاد)' },
+      { value: 1, label: '۱ دقیقه' },
+      { value: 2, label: '۲ دقیقه' },
+      { value: 5, label: '۵ دقیقه' },
+      { value: 10, label: '۱۰ دقیقه' },
+      { value: 15, label: '۱۵ دقیقه' },
+      { value: 20, label: '۲۰ دقیقه' },
+      { value: 'custom', label: 'زمان سفارشی (وارد کردن به دقیقه)...' },
     ];
-    timerOptions.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.val;
-      opt.textContent = t.label;
-      timerSelect.appendChild(opt);
-    });
-    timerSelect.value = 5; // default is 5 minutes
-    timerSection.appendChild(timerSelect);
 
     const customTimeInput = document.createElement('input');
     customTimeInput.type = 'number';
@@ -257,11 +232,14 @@ export async function renderExamSession(container, categoryId = null) {
     customTimeInput.className = 'ds-field-input';
     customTimeInput.placeholder = 'مدت زمان به دقیقه (مثلاً ۳۰)';
     customTimeInput.style.cssText = 'width:100%; padding:var(--space-2); border-radius:8px; display:none;';
-    timerSection.appendChild(customTimeInput);
 
-    timerSelect.addEventListener('change', () => {
-      customTimeInput.style.display = timerSelect.value === 'custom' ? 'block' : 'none';
+    const timerSelect = createSelectField({
+      options: timerOptions,
+      value: 5, // default is 5 minutes
+      onChange: (val) => { customTimeInput.style.display = val === 'custom' ? 'block' : 'none'; },
     });
+    timerSection.appendChild(timerSelect);
+    timerSection.appendChild(customTimeInput);
 
     configCard.appendChild(timerSection);
 
@@ -269,21 +247,12 @@ export async function renderExamSession(container, categoryId = null) {
     const orderSection = document.createElement('div');
     orderSection.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
     orderSection.innerHTML = '<span style="font-weight:700; font-size:var(--text-body); color:var(--text-primary);">ترتیب سوالات:</span>';
-    
-    const orderSelect = document.createElement('select');
-    orderSelect.className = 'ds-field-input';
-    orderSelect.style.cssText = 'width:100%; padding:var(--space-2); border-radius:8px;';
-    
+
     const orderOptions = [
-      { val: 'shuffled', label: 'تصادفی و درهم (پیشنهادی شبیه‌ساز)' },
-      { val: 'sequential', label: 'به ترتیب کارت‌های کتابخانه' }
+      { value: 'shuffled', label: 'تصادفی و درهم (پیشنهادی شبیه‌ساز)' },
+      { value: 'sequential', label: 'به ترتیب کارت‌های کتابخانه' }
     ];
-    orderOptions.forEach(o => {
-      const opt = document.createElement('option');
-      opt.value = o.val;
-      opt.textContent = o.label;
-      orderSelect.appendChild(opt);
-    });
+    const orderSelect = createSelectField({ options: orderOptions, value: 'shuffled' });
     orderSection.appendChild(orderSelect);
     configCard.appendChild(orderSection);
 
@@ -369,7 +338,14 @@ export async function renderExamSession(container, categoryId = null) {
     const questions = selectedCards.map((card, idx) => {
       let qType;
       const isCloze = /[\.]{3,}/.test(textOf(card.frontContent));
-      if (isCloze && activeTypes.includes('blank')) {
+      // A card the user (or the AI) explicitly authored as a specific quiz
+      // type takes priority — that's what lets it carry its own
+      // hand-written wrong options instead of borrowing them from
+      // unrelated cards.
+      const forcedType = card.answerType && card.answerType !== 'auto' ? card.answerType : null;
+      if (forcedType && activeTypes.includes(forcedType)) {
+        qType = forcedType;
+      } else if (isCloze && activeTypes.includes('blank')) {
         qType = 'blank';
       } else {
         const filteredTypes = activeTypes.filter(t => t !== 'blank');
@@ -395,12 +371,22 @@ export async function renderExamSession(container, categoryId = null) {
     const aText = textOf(card.backContent);
 
     if (type === 'choice') {
-      const others = fullList.filter(c => c.id !== card.id);
-      const distractors = others
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.min(3, others.length))
-        .map(c => textOf(c.backContent));
-      
+      const authoredOptions = (card.choiceOptions || []).map((s) => (s || '').trim()).filter(Boolean);
+      let distractors;
+      if (authoredOptions.length > 0) {
+        // The user (or the AI) wrote these wrong options specifically for
+        // this card, so they always relate to the actual question.
+        distractors = authoredOptions.slice(0, 3);
+      } else {
+        // No authored options: fall back to the old behaviour of borrowing
+        // answers from other cards in the category.
+        const others = fullList.filter(c => c.id !== card.id);
+        distractors = others
+          .sort(() => 0.5 - Math.random())
+          .slice(0, Math.min(3, others.length))
+          .map(c => textOf(c.backContent));
+      }
+
       const options = [aText, ...distractors].sort(() => 0.5 - Math.random());
       const correctIdx = options.indexOf(aText);
 
@@ -421,10 +407,18 @@ export async function renderExamSession(container, categoryId = null) {
       let match = true;
 
       if (!isTrue) {
-        const others = fullList.filter(c => c.id !== card.id);
-        if (others.length > 0) {
-          displayAnswer = textOf(others[Math.floor(Math.random() * others.length)].backContent);
+        const authoredFalse = (card.falseStatement || '').trim();
+        if (authoredFalse) {
+          // The user (or the AI) wrote this false version specifically for
+          // this card's statement.
+          displayAnswer = authoredFalse;
           match = false;
+        } else {
+          const others = fullList.filter(c => c.id !== card.id);
+          if (others.length > 0) {
+            displayAnswer = textOf(others[Math.floor(Math.random() * others.length)].backContent);
+            match = false;
+          }
         }
       }
 
