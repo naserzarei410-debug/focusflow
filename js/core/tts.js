@@ -9,18 +9,61 @@ let activeAudioToken = 0;
 const PERSIAN_ARABIC_REGEX = /[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 /**
- * Persian text-to-speech isn't supported (no reliable free engine), but
- * flashcards routinely mix an English term inside a Persian sentence
- * (e.g. "معنی apple چیست؟"). Previously ANY Persian character anywhere in
- * the text caused the whole request to be rejected, so the English word
- * right next to it never got read either. Instead, strip out the
- * Persian/Arabic runs and speak whatever Latin/English text remains.
+ * Picks the language to speak in when the caller didn't specify one
+ * explicitly: if the text itself contains Persian/Arabic characters we
+ * always speak it as Persian (fa-IR), regardless of the saved accent
+ * preference (that preference only makes sense for English text). This
+ * replaces the old behavior, which stripped every Persian character out
+ * of the text before speaking and refused to read Persian at all.
  */
-function extractSpeakableText(text) {
-  return text
-    .replace(new RegExp(PERSIAN_ARABIC_REGEX.source, 'g'), ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+function detectSpeechLang(text, savedLangSetting) {
+  if (PERSIAN_ARABIC_REGEX.test(text)) return 'fa-IR';
+  return savedLangSetting || 'en-US';
+}
+
+// --- Native device TTS (the phone's own system engine, e.g. "Google
+// Text-to-speech" shown in Android's own Settings > Text-to-speech
+// output). This is what makes pronunciation work fully offline, and it's
+// often the ONLY tier that can actually speak Persian without an internet
+// connection, since most devices ship a Persian voice for their system
+// engine even though in-WebView `window.speechSynthesis` frequently
+// doesn't work at all inside a packaged Android app. ---
+let NativeDeviceTts = null;
+let nativeTtsLoadAttempted = false;
+
+async function loadNativeDeviceTts() {
+  if (nativeTtsLoadAttempted) return NativeDeviceTts;
+  nativeTtsLoadAttempted = true;
+  try {
+    const core = await import('@capacitor/core');
+    if (core.Capacitor && core.Capacitor.isNativePlatform && core.Capacitor.isNativePlatform()) {
+      const mod = await import('@capacitor-community/text-to-speech');
+      NativeDeviceTts = mod.TextToSpeech;
+    }
+  } catch (e) {
+    // Not a native build (e.g. `npm run dev` in a browser), or the plugin
+    // isn't installed/synced yet - this tier simply isn't available.
+    NativeDeviceTts = null;
+  }
+  return NativeDeviceTts;
+}
+
+async function playNativeDeviceTts(text, lang, rate) {
+  const plugin = await loadNativeDeviceTts();
+  if (!plugin) return false;
+  try {
+    await plugin.speak({
+      text: text.substring(0, 4000),
+      lang,
+      rate: rate || 1.0,
+      pitch: 1.0,
+      volume: 1.0,
+      category: 'playback',
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -297,31 +340,15 @@ export async function speak(text, lang) {
 
   const cleanText = String(text).trim();
 
-  // Persian TTS itself isn't supported (no reliable free engine), but we
-  // shouldn't throw away an English word just because it's sitting next
-  // to Persian text in the same flashcard. Strip the Persian/Arabic runs
-  // and speak whatever Latin/English text remains; only refuse outright
-  // if nothing speakable is left.
-  const speakableText = extractSpeakableText(cleanText);
-  if (!speakableText) {
-    showToast('تلفظ صوتی برای زبان فارسی پشتیبانی نمی‌شود.', 'error');
-    return false;
-  }
-
   try {
     const savedRateStr = await db.getSetting('tts_speed', '0.95');
     const rate = parseFloat(savedRateStr) || 0.95;
+    const savedLang = await db.getSetting('tts_lang', '');
 
-    // Auto-detect language if not explicitly provided
-    let detectedLang = lang;
-    if (!detectedLang) {
-      detectedLang = 'en-US'; // Default to English now
-      // Check if there's a custom preferred language setting saved
-      const savedLang = await db.getSetting('tts_lang', '');
-      if (savedLang) {
-        detectedLang = savedLang;
-      }
-    }
+    // Auto-detect language from the text itself when the caller didn't
+    // pin one explicitly. Persian text is now spoken as Persian instead
+    // of being stripped out - see detectSpeechLang() above.
+    const detectedLang = lang || detectSpeechLang(cleanText, savedLang);
 
     const errors = [];
 
@@ -333,7 +360,7 @@ export async function speak(text, lang) {
       const apiKey = await db.getSetting('gemini_api_key', '');
       if (apiKey) {
         try {
-          const success = await playGeminiTts(speakableText, detectedLang, apiKey);
+          const success = await playGeminiTts(cleanText, detectedLang, apiKey);
           if (success) return true;
         } catch (geminiError) {
           errors.push(`Gemini TTS: ${geminiError.message || geminiError}`);
@@ -343,24 +370,38 @@ export async function speak(text, lang) {
 
       // Tier 2: Try Google Translate TTS, with real success verification.
       try {
-        const success = await playOnlineTts(speakableText, detectedLang);
+        const success = await playOnlineTts(cleanText, detectedLang);
         if (success) return true;
       } catch (onlineError) {
         errors.push(`Google TTS: ${onlineError.message || onlineError}`);
-        console.warn('Online Google TTS failed, falling back to native SpeechSynthesis:', onlineError);
+        console.warn('Online Google TTS failed, falling back:', onlineError);
       }
     } else {
       errors.push('offline');
     }
 
-    // Tier 3. Offline / Fallback: Native Web Speech API (no-ops on most APKs)
-    const success = await playNativeTts(speakableText, detectedLang, rate);
+    // Tier 3: Native device TTS engine (e.g. "Google Text-to-speech" in
+    // Android's own Settings). Fully offline, and usually the only tier
+    // that can speak Persian without internet.
+    try {
+      const success = await playNativeDeviceTts(cleanText, detectedLang, rate);
+      if (success) return true;
+    } catch (nativeDeviceError) {
+      errors.push(`Native device TTS: ${nativeDeviceError.message || nativeDeviceError}`);
+    }
+
+    // Tier 4. Last resort: in-WebView browser SpeechSynthesis (frequently
+    // a no-op inside packaged Android apps, kept only as a bonus for
+    // real browsers/PWAs).
+    const success = await playNativeTts(cleanText, detectedLang, rate);
     if (success) return true;
 
-    console.warn('All TTS channels failed for text:', speakableText, errors);
+    console.warn('All TTS channels failed for text:', cleanText, errors);
+    showToast('پخش صدا با مشکل مواجه شد. اتصال اینترنت یا موتور صوتی گوشی خود را بررسی کنید.', 'error');
     return false;
   } catch (e) {
     console.error('All TTS channels failed:', e);
+    showToast('پخش صدا با مشکل مواجه شد.', 'error');
     return false;
   }
 }
@@ -380,6 +421,15 @@ export function stopSpeaking() {
       // ignore
     }
     activeAudio = null;
+  }
+
+  // Stop the native device TTS engine, if it's currently loaded/speaking.
+  if (NativeDeviceTts) {
+    try {
+      NativeDeviceTts.stop();
+    } catch (e) {
+      // ignore
+    }
   }
 
   // Stop native speech synthesis

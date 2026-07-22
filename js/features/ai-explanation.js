@@ -1,11 +1,10 @@
-import { db } from '../core/db.js';
-import { chatWithGemini, GeminiClientError } from '../core/gemini-client.js';
+import { chatWithAI, getActiveProviderInfo, AIClientError } from '../core/ai-client.js';
 import { openBottomSheet, createLoadingInline, showToast, createButton, renderFractionsInText } from '../core/ui.js';
 
 export async function openAiExplanationBottomSheet(frontText, backText) {
-  const apiKey = await db.getSetting('gemini_api_key', '');
-  if (!apiKey) {
-    showToast('برای این قابلیت باید کلید Gemini را در تنظیمات وارد کنید', 'error');
+  const { configured, label } = await getActiveProviderInfo();
+  if (!configured) {
+    showToast(`برای این قابلیت باید ابتدا یک ارائه‌دهنده هوش مصنوعی (${label}) را در تنظیمات وصل کنید`, 'error');
     return;
   }
 
@@ -20,7 +19,6 @@ export async function openAiExplanationBottomSheet(frontText, backText) {
   const loadingEl = createLoadingInline('در حال دریافت توضیح از هوش مصنوعی...');
   contentContainer.appendChild(loadingEl);
 
-  const model = await db.getSetting('gemini_model', 'gemini-3.5-flash');
   const systemInstruction = `شما یک معلم صبور و دلسوز فارسی‌زبان هستید.
 وظیفه شما توضیح دادن یک فلش‌کارت (شامل سوال و جواب) به زبان ساده، قابل فهم، با مثال‌های روزمره و قدم‌به‌قدم است.
 دانش‌آموز این سوال را متوجه نشده است. فقط جواب را تکرار نکنید، بلکه مفهوم را روشن کنید و دلیل آن را توضیح دهید.
@@ -34,9 +32,7 @@ ${frontText}
 ${backText}`;
 
   try {
-    const res = await chatWithGemini({
-      apiKey,
-      model,
+    const res = await chatWithAI({
       message: contextMessage,
       systemInstruction
     });
@@ -57,9 +53,7 @@ ${backText}`;
         simplerBtn.disabled = true;
         
         try {
-          const followUpRes = await chatWithGemini({
-            apiKey,
-            model,
+          const followUpRes = await chatWithAI({
             message: 'لطفا همین موضوع را خیلی ساده‌تر و مثل یک داستان یا مثال کاملا روزمره توضیح بده.',
             history: [
               { sender: 'user', text: contextMessage },
@@ -83,7 +77,7 @@ ${backText}`;
 
   } catch (err) {
     contentContainer.innerHTML = '';
-    showToast(err instanceof GeminiClientError ? err.message : 'خطا در ارتباط با هوش مصنوعی', 'error');
+    showToast(err instanceof AIClientError ? err.message : 'خطا در ارتباط با هوش مصنوعی', 'error');
     bs.remove();
   }
 }

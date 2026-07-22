@@ -5,6 +5,7 @@ import {
   showToast, renderFractionsInText, createSelectField, createTextField,
 } from '../core/ui.js';
 import { categoryRepository, flashcardRepository } from '../core/repositories.js';
+import { notifications } from '../core/notifications.js';
 import { createFlashcardModel } from '../core/models.js';
 import { speak, isSpeechSupported } from '../core/tts.js';
 import { router } from '../core/router.js';
@@ -337,6 +338,7 @@ export async function renderCategoryWorkspace(container, categoryId) {
               onClick: async () => {
                 await flashcardRepository.delete(card.id);
                 await recalcCategoryCount(categoryId);
+                notifications.scheduleNextReviewReminder();
                 sheet.close();
                 refresh();
               },
@@ -396,7 +398,7 @@ export async function renderCategoryWorkspace(container, categoryId) {
         { value: 'blank', label: 'جای خالی' },
       ],
       value: existing?.answerType || 'auto',
-      hint: 'اگر «پیش‌فرض» را انتخاب کنید، سیستم مثل قبل ممکن است گزینه‌های اشتباه را از سوال‌های دیگر بسازد.',
+      hint: 'اگر «پیش‌فرض» را انتخاب کنید، سیستم به‌صورت خودکار گزینه‌های اشتباه را از سایر کارت‌های این دسته می‌سازد.',
       onChange: () => updateAnswerTypeVisibility(),
     });
 
@@ -466,11 +468,13 @@ export async function renderCategoryWorkspace(container, categoryId) {
           if (isEdit) {
             await flashcardRepository.update(existing.id, payload);
             await recalcCategoryCount(categoryId);
+            notifications.scheduleNextReviewReminder();
             sheet.close();
             refresh();
           } else {
             await flashcardRepository.create(createFlashcardModel(payload));
             await recalcCategoryCount(categoryId);
+            notifications.scheduleNextReviewReminder();
             refresh();
 
             frontField.input.value = '';

@@ -649,13 +649,8 @@ async function startPdfEngineFlow(categories) {
       const textToAnalyze = extracted.text.slice(0, 12000);
 
       
-      const apiKey = await db.getSetting('gemini_api_key', '');
-      const preferredModel = await db.getSetting('gemini_model', '');
-
-      const { generateCardsWithGemini } = await import('../core/gemini-client.js');
-      const data = await generateCardsWithGemini({
-        apiKey: apiKey || undefined,
-        model: preferredModel || undefined,
+      const { generateCardsWithAI } = await import('../core/ai-client.js');
+      const data = await generateCardsWithAI({
         text: textToAnalyze,
         categoryTitle: category ? category.title : 'عمومی'
       });
@@ -1173,13 +1168,8 @@ function openOcrPreviewDialog(extractedText, categoryId, categories) {
             const category = categories.find(c => c.id === categoryId);
             
             
-            const apiKey = await db.getSetting('gemini_api_key', '');
-            const preferredModel = await db.getSetting('gemini_model', '');
-
-            const { generateCardsWithGemini } = await import('../core/gemini-client.js');
-            const data = await generateCardsWithGemini({
-              apiKey: apiKey || undefined,
-              model: preferredModel || undefined,
+            const { generateCardsWithAI } = await import('../core/ai-client.js');
+            const data = await generateCardsWithAI({
               text: text,
               categoryTitle: category ? category.title : 'عمومی'
             });
@@ -2203,8 +2193,6 @@ export async function renderAI(container) {
     try {
       const activeCat = dbCatId ? await categoryRepository.getById(dbCatId) : null;
       
-      const apiKey = await db.getSetting('gemini_api_key', '');
-      const preferredModel = await db.getSetting('gemini_model', '');
       const customInstruction = await db.getSetting('gemini_system_instruction', '');
 
       let systemInstruction = getSystemInstruction(activeCat ? activeCat.title : null, activeCat ? activeCat.description : null);
@@ -2212,10 +2200,8 @@ export async function renderAI(container) {
         systemInstruction = customInstruction + "\n\n" + systemInstruction;
       }
 
-      const { chatWithGemini } = await import('../core/gemini-client.js');
-      const resData = await chatWithGemini({
-        apiKey: apiKey || undefined,
-        model: preferredModel || undefined,
+      const { chatWithAI } = await import('../core/ai-client.js');
+      const resData = await chatWithAI({
         message: text,
         history: activeConversation.messages.slice(0, -1),
         systemInstruction,
@@ -2252,9 +2238,9 @@ export async function renderAI(container) {
     const conv = activeConversation;
     if (!conv) return;
     try {
-      const apiKey = await db.getSetting('gemini_api_key', '');
-      if (!apiKey) return;
-      const modelName = await db.getSetting('gemini_model', '');
+      const { chatWithAI, getActiveProviderInfo } = await import('../core/ai-client.js');
+      const { configured } = await getActiveProviderInfo();
+      if (!configured) return;
 
       const transcript = conv.messages
         .filter(m => m.text)
@@ -2262,10 +2248,7 @@ export async function renderAI(container) {
         .join('\n')
         .slice(-6000); // keep the prompt bounded for long chats
 
-      const { chatWithGemini } = await import('../core/gemini-client.js');
-      const topicRes = await chatWithGemini({
-        apiKey,
-        model: modelName || undefined,
+      const topicRes = await chatWithAI({
         message: `با توجه به کل مکالمه زیر، یک موضوع بسیار کوتاه (حداکثر ۴ کلمه) و گویا برای این گفتگو بنویس که خلاصه کل گفتگو باشد، نه فقط اولین پیام. فقط خود موضوع را بدون هیچ توضیح، گیومه یا نقطه اضافه بنویس.\n\nمکالمه:\n${transcript}`
       });
 
@@ -9904,6 +9887,11 @@ export async function renderSettings(container) {
   
   const apiKey = await db.getSetting('gemini_api_key', '');
   const preferredModel = await db.getSetting('gemini_model', 'gemini-3.5-flash');
+  const aiProvider = await db.getSetting('ai_provider', 'gemini');
+  const groqApiKey = await db.getSetting('groq_api_key', '');
+  const groqModel = await db.getSetting('groq_model', 'openai/gpt-oss-120b');
+  const openrouterApiKey = await db.getSetting('openrouter_api_key', '');
+  const openrouterModel = await db.getSetting('openrouter_model', 'openrouter/free');
   const dictationMethod = await db.getSetting('dictation_method', 'auto');
   const customInstruction = await db.getSetting('gemini_system_instruction', '');
   const ttsSpeed = await db.getSetting('tts_speed', '0.95');
@@ -10116,15 +10104,35 @@ export async function renderSettings(container) {
   aiContainer.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
   const connDesc = document.createElement('div');
   connDesc.style.cssText = 'font-size:var(--text-caption); color:var(--text-secondary); line-height:1.6; text-align:right;';
-  connDesc.textContent = 'برای استفاده از قابلیت‌های هوش مصنوعی، یک کلید API رایگان از Google AI Studio دریافت کرده و در زیر وارد کنید. اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.';
+  connDesc.textContent = 'یک ارائه‌دهنده هوش مصنوعی انتخاب کنید و کلید API آن را وارد نمایید. این انتخاب روی چت هوش مصنوعی و تولید خودکار فلش‌کارت اعمال می‌شود. اطلاعات شما فقط روی همین دستگاه ذخیره می‌شود.';
+
+  const providerField = createSelectField({
+    label: 'ارائه‌دهنده هوش مصنوعی برای چت و تولید فلش‌کارت',
+    value: aiProvider,
+    options: [
+      { value: 'gemini', label: 'Google Gemini' },
+      { value: 'groq', label: 'Groq (سرعت پاسخ بسیار بالا)' },
+      { value: 'openrouter', label: 'OpenRouter (دسترسی به چند مدل مختلف)' },
+    ],
+    onChange: (val) => updateProviderFieldsVisibility(val),
+  });
+
+  // --- Gemini fields (also used by TTS / voice dictation regardless of
+  // which provider is chosen above, since those two features specifically
+  // rely on Gemini's audio capabilities — see js/core/ai-client.js). ---
+  const geminiFieldsWrap = document.createElement('div');
+  geminiFieldsWrap.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-2); border-radius:var(--radius-input); background:var(--bg-sunken);';
+  const geminiFieldsTitle = document.createElement('div');
+  geminiFieldsTitle.style.cssText = 'font-weight:700; font-size:var(--text-caption); color:var(--text-secondary);';
+  geminiFieldsTitle.textContent = 'Gemini (Google AI Studio) — همچنین برای تبدیل گفتار به متن و خواندن صوتی فارسی استفاده می‌شود';
   const keyField = createTextField({
-    label: 'کلید API اختصاصی Gemini (از Google AI Studio)',
+    label: 'کلید API اختصاصی Gemini',
     placeholder: 'AIzaSy...',
     value: apiKey,
     type: 'password'
   });
   const modelField = createSelectField({
-    label: 'مدل پیش‌فرض هوش مصنوعی',
+    label: 'مدل Gemini',
     value: preferredModel,
     options: [
       { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (هوشمند و بسیار سریع - پیش‌فرض)' },
@@ -10133,6 +10141,51 @@ export async function renderSettings(container) {
     ],
   });
   const modelSelect = modelField;
+  geminiFieldsWrap.append(geminiFieldsTitle, keyField, modelField);
+
+  // --- Groq fields ---
+  const groqFieldsWrap = document.createElement('div');
+  groqFieldsWrap.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-2); border-radius:var(--radius-input); background:var(--bg-sunken);';
+  const groqKeyField = createTextField({
+    label: 'کلید API Groq (از console.groq.com)',
+    placeholder: 'gsk_...',
+    value: groqApiKey,
+    type: 'password'
+  });
+  const groqModelField = createTextField({
+    label: 'شناسه مدل Groq',
+    placeholder: 'openai/gpt-oss-120b',
+    value: groqModel || 'openai/gpt-oss-120b',
+  });
+  const groqModelHint = document.createElement('div');
+  groqModelHint.style.cssText = 'font-size:var(--text-caption); color:var(--text-tertiary); line-height:1.6;';
+  groqModelHint.textContent = 'فهرست مدل‌های فعال Groq و شناسه دقیق آن‌ها را می‌توانید در console.groq.com/docs/models ببینید (این فهرست گاهی تغییر می‌کند).';
+  groqFieldsWrap.append(groqKeyField, groqModelField, groqModelHint);
+
+  // --- OpenRouter fields ---
+  const openrouterFieldsWrap = document.createElement('div');
+  openrouterFieldsWrap.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-2); border-radius:var(--radius-input); background:var(--bg-sunken);';
+  const openrouterKeyField = createTextField({
+    label: 'کلید API OpenRouter (از openrouter.ai/keys)',
+    placeholder: 'sk-or-v1-...',
+    value: openrouterApiKey,
+    type: 'password'
+  });
+  const openrouterModelField = createTextField({
+    label: 'شناسه مدل OpenRouter',
+    placeholder: 'openrouter/free',
+    value: openrouterModel || 'openrouter/free',
+  });
+  const openrouterModelHint = document.createElement('div');
+  openrouterModelHint.style.cssText = 'font-size:var(--text-caption); color:var(--text-tertiary); line-height:1.6;';
+  openrouterModelHint.textContent = 'مقدار پیش‌فرض «openrouter/free» به‌صورت خودکار یکی از مدل‌های رایگان موجود را انتخاب می‌کند. برای انتخاب مدل مشخص، شناسه آن را از openrouter.ai/models کپی کنید.';
+  openrouterFieldsWrap.append(openrouterKeyField, openrouterModelField, openrouterModelHint);
+
+  function updateProviderFieldsVisibility(provider) {
+    groqFieldsWrap.style.display = provider === 'groq' ? 'flex' : 'none';
+    openrouterFieldsWrap.style.display = provider === 'openrouter' ? 'flex' : 'none';
+  }
+  updateProviderFieldsVisibility(aiProvider);
 
   // Voice dictation method: the mic button on Practice/Exam short-answer
   // questions can use the browser's own (free, offline-capable) speech
@@ -10143,7 +10196,7 @@ export async function renderSettings(container) {
   const dictationField = createSelectField({
     label: 'روش دیکته صوتی (تبدیل گفتار به متن)',
     value: dictationMethod,
-    hint: 'اگر گزینه «مرورگر» در دستگاه شما کار نکرد، حالت «خودکار» را انتخاب کنید.',
+    hint: 'اگر گزینه «مرورگر» در دستگاه شما کار نکرد، حالت «خودکار» را انتخاب کنید. این قابلیت همیشه از کلید Gemini بالا استفاده می‌کند.',
     options: [
       { value: 'auto', label: 'خودکار — ابتدا مرورگر، در صورت خطا هوش مصنوعی (پیشنهادی)' },
       { value: 'native', label: 'فقط تشخیص گفتار مرورگر (بدون نیاز به کلید API)' },
@@ -10165,17 +10218,28 @@ export async function renderSettings(container) {
     icon: 'save',
     variant: 'primary',
     onClick: async () => {
+      const providerVal = providerField.value;
       const keyVal = keyField.input.value.trim();
       const modelVal = modelSelect.value;
+      const groqKeyVal = groqKeyField.input.value.trim();
+      const groqModelVal = groqModelField.input.value.trim() || 'openai/gpt-oss-120b';
+      const openrouterKeyVal = openrouterKeyField.input.value.trim();
+      const openrouterModelVal = openrouterModelField.input.value.trim() || 'openrouter/free';
       const instructionVal = instructionField.input.value.trim();
 
+      await db.setSetting('ai_provider', providerVal);
       await db.setSetting('gemini_api_key', keyVal);
       await db.setSetting('gemini_model', modelVal);
+      await db.setSetting('groq_api_key', groqKeyVal);
+      await db.setSetting('groq_model', groqModelVal);
+      await db.setSetting('openrouter_api_key', openrouterKeyVal);
+      await db.setSetting('openrouter_model', openrouterModelVal);
       await db.setSetting('dictation_method', dictationSelect.value);
       await db.setSetting('gemini_system_instruction', instructionVal);
-      
-      if (!keyVal) {
-        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. برای استفاده از هوش مصنوعی، وارد کردن کلید API الزامی است.', 'success');
+
+      const activeKey = providerVal === 'groq' ? groqKeyVal : providerVal === 'openrouter' ? openrouterKeyVal : keyVal;
+      if (!activeKey) {
+        showStatusMessage(aiContainer, 'تنظیمات ذخیره شد. برای استفاده از هوش مصنوعی، وارد کردن کلید API ارائه‌دهنده انتخاب‌شده الزامی است.', 'success');
       } else {
         showStatusMessage(aiContainer, 'تنظیمات هوش مصنوعی با موفقیت ذخیره شد.', 'success');
       }
@@ -10190,14 +10254,30 @@ export async function renderSettings(container) {
       const prevLabel = testBtn.lastChild.textContent;
       testBtn.lastChild.textContent = 'در حال بررسی اتصال...';
       try {
-        const keyVal = keyField.input.value.trim();
-        const modelVal = modelSelect.value;
-        const { chatWithGemini } = await import('../core/gemini-client.js');
-        const resData = await chatWithGemini({
-          apiKey: keyVal || undefined,
-          model: modelVal,
-          message: 'پاسخ بده: سلام'
-        });
+        const providerVal = providerField.value;
+        let resData;
+        if (providerVal === 'groq') {
+          const { chatWithGroq } = await import('../core/groq-client.js');
+          resData = await chatWithGroq({
+            apiKey: groqKeyField.input.value.trim() || undefined,
+            model: groqModelField.input.value.trim() || undefined,
+            message: 'پاسخ بده: سلام'
+          });
+        } else if (providerVal === 'openrouter') {
+          const { chatWithOpenRouter } = await import('../core/openrouter-client.js');
+          resData = await chatWithOpenRouter({
+            apiKey: openrouterKeyField.input.value.trim() || undefined,
+            model: openrouterModelField.input.value.trim() || undefined,
+            message: 'پاسخ بده: سلام'
+          });
+        } else {
+          const { chatWithGemini } = await import('../core/gemini-client.js');
+          resData = await chatWithGemini({
+            apiKey: keyField.input.value.trim() || undefined,
+            model: modelSelect.value,
+            message: 'پاسخ بده: سلام'
+          });
+        }
         showStatusMessage(aiContainer, `اتصال موفق! هوش مصنوعی پاسخ داد: ${resData.text}`, 'success');
       } catch (err) {
         showStatusMessage(aiContainer, `خطا در تست اتصال: ${err.message}`, 'error');
@@ -10208,8 +10288,8 @@ export async function renderSettings(container) {
     }
   });
   buttonsRow.append(testBtn, saveAiBtn);
-  aiContainer.append(connDesc, keyField, modelField, dictationField, instructionField, buttonsRow);
-  const aiCard = createCard({ title: 'تنظیمات هوش مصنوعی (Gemini)', content: aiContainer });
+  aiContainer.append(connDesc, providerField, geminiFieldsWrap, groqFieldsWrap, openrouterFieldsWrap, dictationField, instructionField, buttonsRow);
+  const aiCard = createCard({ title: 'تنظیمات هوش مصنوعی', content: aiContainer });
 
   // TTS Card
   const ttsContainer = document.createElement('div');
@@ -10488,8 +10568,13 @@ export async function renderSettings(container) {
       icon: 'delete',
       variant: 'text',
       onClick: async () => {
-        await themeApi.resetCustomFont(target.id);
-        showStatusMessage(fontsContainer, 'فونت سفارشی حذف شد.', 'success');
+        try {
+          await themeApi.resetCustomFont(target.id);
+          showStatusMessage(fontsContainer, 'فونت سفارشی حذف شد.', 'success');
+        } catch (err) {
+          console.error('Failed to delete custom font', err);
+          showStatusMessage(fontsContainer, 'حذف فونت سفارشی با خطا مواجه شد.', 'error');
+        }
       }
     });
 
@@ -10784,8 +10869,13 @@ export async function renderSettings(container) {
                     onClick: async () => {
                       const { wipeAllData } = await import('../core/backup.js');
                       await wipeAllData();
+                      await db.setSetting('ai_provider', 'gemini');
                       await db.setSetting('gemini_api_key', '');
                       await db.setSetting('gemini_model', 'gemini-3.5-flash');
+                      await db.setSetting('groq_api_key', '');
+                      await db.setSetting('groq_model', 'openai/gpt-oss-120b');
+                      await db.setSetting('openrouter_api_key', '');
+                      await db.setSetting('openrouter_model', 'openrouter/free');
                       await db.setSetting('dictation_method', 'auto');
                       await db.setSetting('gemini_system_instruction', '');
                       await db.setSetting('tts_speed', '0.95');

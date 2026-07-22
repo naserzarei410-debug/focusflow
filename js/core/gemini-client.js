@@ -13,11 +13,14 @@
 // to any server of ours — only straight to Google's API endpoint with
 // the user's own key.
 
+import { AIClientError } from './ai-errors.js';
+import { FLASHCARD_SYSTEM_INSTRUCTION } from './flashcard-prompt.js';
+
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const DEFAULT_MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
-class GeminiClientError extends Error {}
+class GeminiClientError extends AIClientError {}
 
 function buildModelList(preferredModel) {
   if (preferredModel && DEFAULT_MODELS.includes(preferredModel)) {
@@ -171,30 +174,7 @@ export async function generateCardsWithGemini({ apiKey, model, text, categoryTit
     throw new GeminiClientError('لطفاً ابتدا کلید API را در تنظیمات وارد کنید');
   }
 
-  const systemInstruction = `شما یک دستیار هوشمند آموزشی دلسوز به زبان فارسی هستید.
-وظیفه شما خواندن متن ارائه شده (که از فایل سند یا PDF کاربر استخراج شده است) و ایجاد بین ۵ تا ۱۰ فلش‌کارت فوق‌العاده کاربردی، دقیق و کلیدی برای یادگیری به زبان فارسی روان است.
-هر فلش‌کارت باید شامل یک سوال متمرکز روی مفاهیم اصلی (کلیدواژه front) و پاسخ مختصر، دقیق و آموزنده در پشت کارت (کلیدواژه back) باشد.
-
-قوانین نمایش فرمول و نماد ریاضی (بسیار مهم):
-- هر عبارت ریاضی (کسر، توان، ریشه، مجموعه، بازه، نامعادله، حد، انتگرال، حروف یونانی و...) را همیشه داخل علامت دلار بگذار: برای فرمول داخل متن از یک $ در ابتدا و یک $ در انتها استفاده کن، مثلاً $n(A \\cup B) = n(A) + n(B) - n(A \\cap B)$. برای فرمول مستقل و بزرگ از $$ در ابتدا و انتها استفاده کن.
-- از دستورات استاندارد LaTeX استفاده کن: کسر با \\frac{صورت}{مخرج}، توان با ^{}، اندیس با _{}، ریشه با \\sqrt{}، مجموعه‌ها با \\cup و \\cap و \\in و \\subseteq، نامعادله با \\leq و \\geq و \\neq، بی‌نهایت با \\infty، حروف یونانی با \\alpha و \\beta و \\pi و مشابه آن.
-- بازه‌های عددی مثل [a, b) یا (a, b] را به همان شکل معمولی و بدون هیچ دستور خاصی و فقط داخل $...$ بنویس.
-- هرگز از فرمت‌های دیگر (مثل Markdown دوبل ستاره یا کد بلاک) برای فرمول استفاده نکن؛ فقط از $...$ یا $$...$$ همراه دستورات LaTeX استاندارد بالا.
-
-علاوه بر front و back، برای هر فلش‌کارت این دو فیلد را هم اضافه کن تا سیستم بتواند بعداً سوال چند گزینه‌ای و صحیح/غلط بسازد بدون اینکه گزینه‌های غلط را از فلش‌کارت‌های دیگر و نامرتبط قرض بگیرد:
-- "wrongOptions": یک آرایه شامل دقیقاً ۳ گزینه غلط اما باورپذیر و مرتبط با همان سوال (برای حالت تستی چهارگزینه‌ای)، که هیچکدام نباید با پاسخ درست یکی باشند.
-- "falseStatement": یک نسخه نادرست و کوتاه از عبارتِ پشت کارت (برای حالت صحیح/غلط)، که با پاسخ درست فرق داشته باشد.
-
-پاسخ شما باید منحصراً و بدون هیچ متنِ اضافیِ دیگر، به شکل یک آرایه معتبر JSON به فرمت زیر باشد:
-
-[
-  {
-    "front": "سوال روی کارت؟",
-    "back": "پاسخ پشت کارت.",
-    "wrongOptions": ["گزینه غلط ۱", "گزینه غلط ۲", "گزینه غلط ۳"],
-    "falseStatement": "نسخه نادرست پاسخ پشت کارت."
-  }
-]`;
+  const systemInstruction = FLASHCARD_SYSTEM_INSTRUCTION;
 
   const contents = [
     {

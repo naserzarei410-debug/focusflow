@@ -3,6 +3,7 @@ import './core/icon-system.js';
 import { db } from './core/db.js';
 import { theme } from './core/theme.js';
 import { router } from './core/router.js';
+import { notifications } from './core/notifications.js';
 import { renderHome, renderAI, renderStats, renderSettings, renderSearch } from './features/pages.js';
 import { renderLibrary } from './features/library.js';
 import { renderCategoryWorkspace } from './features/category.js';
@@ -66,6 +67,10 @@ async function bootstrap() {
       // progressive enhancement, not a hard requirement for Phase 1.
     });
   }
+
+  // Schedule (or refresh) the "review due" reminder. This is a no-op on the
+  // web/dev server and only does anything inside the native Android app.
+  notifications.scheduleNextReviewReminder();
 }
 
 bootstrap();

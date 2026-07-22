@@ -6,6 +6,7 @@ import { Rating, State, schedule } from '../core/fsrs.js';
 import { speak, isSpeechSupported } from '../core/tts.js';
 import { router } from '../core/router.js';
 import { categoryRepository, flashcardRepository } from '../core/repositories.js';
+import { notifications } from '../core/notifications.js';
 import { openAiExplanationBottomSheet } from './ai-explanation.js';
 
 export async function renderStudySession(container, categoryId = null, forceAll = false) {
@@ -327,6 +328,11 @@ export async function renderStudySession(container, categoryId = null, forceAll 
       try {
         // Record review using FSRS StudySession engine and retrieve the updated card
         const { card: updatedCard } = await session.submitReview(currentCard, rating);
+
+        // The card's nextReview time just changed, so the previously
+        // scheduled "review due" reminder may now be pointing at the wrong
+        // moment. Refresh it in the background; never block the UI on this.
+        notifications.scheduleNextReviewReminder();
 
         // A card that hasn't graduated out of Learning/Relearning yet is on
         // a short minute-based step (see fsrs.js), not a multi-day FSRS

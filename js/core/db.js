@@ -69,5 +69,16 @@ export const db = {
       req.onsuccess = () => resolve();
       req.onerror = (e) => reject(e.target.error);
     });
+  },
+
+  async deleteSetting(key) {
+    const database = await this.getDb();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction('settings', 'readwrite');
+      const store = transaction.objectStore('settings');
+      const req = store.delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = (e) => reject(e.target.error);
+    });
   }
 };

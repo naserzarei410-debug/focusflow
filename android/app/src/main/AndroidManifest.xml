@@ -38,4 +38,15 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Required on Android 11+ so the app is allowed to see and use the
+         device's installed text-to-speech engine (e.g. "Google
+         Text-to-speech"/Speech Services) for fully offline pronunciation.
+         Without this, @capacitor-community/text-to-speech silently finds
+         no engine on newer Android versions. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 </manifest>

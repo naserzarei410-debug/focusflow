@@ -23,7 +23,7 @@ export async function wipeAllData() {
 }
 
 // Settings that must never leave the device in a shareable backup file.
-const SENSITIVE_SETTING_KEYS = new Set(['gemini_api_key']);
+const SENSITIVE_SETTING_KEYS = new Set(['gemini_api_key', 'groq_api_key', 'openrouter_api_key']);
 
 /**
  * Builds the backup as a plain JS object (not yet stringified), so the

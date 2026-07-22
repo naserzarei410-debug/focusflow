@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./web-qL9JnU1O.js","./index-CNHTL47a.js"])))=>i.map(i=>d[i]);
+import{_ as r}from"./index-CtIp-m6F.js";import{registerPlugin as t}from"./index-CNHTL47a.js";var o;(function(e){e[e.Flush=0]="Flush",e[e.Add=1]="Add"})(o||(o={}));const _=t("TextToSpeech",{web:()=>r(()=>import("./web-qL9JnU1O.js"),__vite__mapDeps([0,1]),import.meta.url).then(e=>new e.TextToSpeechWeb)});export{o as QueueStrategy,_ as TextToSpeech};
