@@ -26,6 +26,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
       - name: Install dependencies
         run: npm ci || npm install
 
@@ -37,10 +42,7 @@ jobs:
 
       - name: Build APK
         working-directory: ./android
-        run: |
-          gradle wrapper --gradle-version 8.14.3
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
+        run: gradle assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
