@@ -1,0 +1,194 @@
+/* Layout structures */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--space-4) 0;
+  background-color: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+  z-index: 100;
+  transition: background-color var(--duration-normal) var(--ease-standard);
+}
+.topbar-leading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.topbar-title {
+  font-size: 17px;
+  font-weight: 600;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+
+.page-content {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6) var(--space-4);
+  padding-bottom: calc(100px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); /* generous space for bottom nav */
+  background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: background-color var(--duration-normal) var(--ease-standard);
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: calc(68px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding: 0 var(--space-3);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  background-color: color-mix(in srgb, var(--bg-primary) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border-top: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.03);
+  z-index: 100;
+  transition: background-color var(--duration-normal) var(--ease-standard);
+  overflow: visible;
+}
+
+/* Expanding pill tab — inactive = icon only; active = icon + label */
+.nav-item {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex: 0 0 auto;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  background: color-mix(in srgb, var(--border-soft) 55%, transparent);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  transition:
+    background-color 0.4s var(--ease-standard),
+    color 0.35s ease,
+    padding 0.55s cubic-bezier(0.34, 1.15, 0.64, 1),
+    gap 0.55s cubic-bezier(0.34, 1.15, 0.64, 1),
+    box-shadow 0.4s ease,
+    transform 0.2s ease;
+}
+.nav-item:active {
+  transform: scale(0.94);
+}
+
+.nav-item .material-symbols-rounded,
+.nav-item > svg {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  transition: font-variation-settings 0.3s ease, color 0.3s ease;
+}
+
+/* Label collapses when inactive, expands when active */
+.nav-label {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(4px);
+  transition:
+    max-width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s ease 0.08s,
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-item.active {
+  color: #fff;
+  background: var(--color-primary);
+  gap: 8px;
+  padding: 0 16px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.nav-item.active .material-symbols-rounded {
+  font-variation-settings: 'FILL' 1;
+}
+
+.nav-item.active .nav-label {
+  max-width: 9.5em;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--text-primary);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.icon-btn:hover {
+  background-color: var(--border-soft);
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-primary);
+  z-index: 10000;
+  gap: var(--space-3);
+  transition: opacity var(--duration-normal) var(--ease-standard);
+}
+.splash-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+}
+.splash-title {
+  font-size: var(--text-section);
+  font-weight: 800;
+  color: var(--text-primary);
+}

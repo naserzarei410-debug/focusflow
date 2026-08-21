@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the light theme's bg-primary token in css/tokens.css -->
+    <color name="ic_launcher_background">#F6F5F0</color>
+    <!-- Matches the dark theme's bg-primary token in css/tokens.css -->
+    <color name="ic_launcher_background_dark">#17161A</color>
+</resources>

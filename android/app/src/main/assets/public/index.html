@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>دستیار یادگیری</title>
+<meta name="theme-color" content="#2F5FA8">
+<link rel="manifest" href="./assets/manifest-y-56fwIp.json">
+
+
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+
+<!-- KaTeX for robust LaTeX / math rendering -->
+<script src="./vendor/katex/katex.min.js" crossorigin="anonymous"></script>
+
+  <script type="module" crossorigin src="./assets/index-CGUIrPDB.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CJ76ZqKE.css">
+</head>
+<body>
+
+  
+  <div id="splash" class="splash">
+    <div class="splash-logo">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;">
+  <path fill-rule="evenodd" clip-rule="evenodd" 
+        d="M 50 12 Q 50 25 38 25 Q 50 25 50 38 Q 50 25 62 25 Q 50 25 50 12 Z M 22 35 Q 35 35 50 42 Q 65 35 78 35 A 4 4 0 0 1 82 39 L 82 72 Q 82 75 78 75 Q 65 75 50 85 Q 35 75 22 75 Q 18 75 18 72 L 18 39 A 4 4 0 0 1 22 35 Z M 44 45 H 56 V 64 L 50 59 L 44 64 Z" 
+        fill="currentColor"/>
+</svg>
+    </div>
+    <div class="splash-title">دستیار یادگیری</div>
+  </div>
+
+  
+  <div id="app" class="app hidden">
+
+    <header class="topbar">
+      <div class="topbar-leading">
+        <button id="theme-toggle" class="icon-btn" aria-label="تغییر پوسته">
+          <span class="material-symbols-rounded" id="theme-icon">dark_mode</span>
+        </button>
+        <button id="back-btn" class="icon-btn hidden" aria-label="بازگشت">
+          <span class="material-symbols-rounded">arrow_forward</span>
+        </button>
+      </div>
+      <h1 id="page-title" class="topbar-title">خانه</h1>
+      <div class="topbar-actions" style="display: flex; align-items: center; gap: 4px;">
+        <button id="calculator-btn" class="icon-btn" aria-label="ماشین‌حساب" title="ماشین‌حساب">
+          <span class="material-symbols-rounded">calculate</span>
+        </button>
+        <button id="search-btn" class="icon-btn" aria-label="جستجو">
+          <span class="material-symbols-rounded">search</span>
+        </button>
+        <button id="menu-btn" class="icon-btn hidden" aria-label="منو">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="page-content" class="page-content" role="main">
+      
+    </main>
+
+    <nav class="bottom-nav" role="navigation" aria-label="ناوبری اصلی">
+      <button class="nav-item" data-route="home">
+        <span class="material-symbols-rounded">home</span>
+        <span class="nav-label">خانه</span>
+      </button>
+      <button class="nav-item" data-route="library">
+        <svg viewBox="0 0 100 100" width="22" height="22" style="fill: currentColor;">
+          <defs>
+            <mask id="library-icon-left">
+              <rect x="0" y="0" width="100" height="100" fill="white" />
+              <rect x="12" y="36" width="24" height="5" fill="black" />
+              <rect x="12" y="66" width="24" height="5" fill="black" />
+            </mask>
+            <mask id="library-icon-mid">
+              <rect x="0" y="0" width="100" height="100" fill="white" />
+              <rect x="44" y="26" width="12" height="24" rx="2" fill="black" />
+              <rect x="44" y="66" width="12" height="5" fill="black" />
+            </mask>
+            <mask id="library-icon-right">
+              <rect x="0" y="0" width="100" height="100" fill="white" />
+              <rect x="72" y="52" width="24" height="5" fill="black" />
+              <rect x="72" y="68" width="24" height="5" fill="black" />
+            </mask>
+          </defs>
+          <rect x="6" y="84" width="88" height="6" rx="3" fill="currentColor"/>
+          <rect x="14" y="24" width="20" height="60" rx="3" fill="currentColor" mask="url(#library-icon-left)"/>
+          <rect x="38" y="14" width="24" height="70" rx="3" fill="currentColor" mask="url(#library-icon-mid)"/>
+          <g transform="translate(74, 84) rotate(-16) translate(-74, -84)">
+            <rect x="74" y="44" width="20" height="40" rx="3" fill="currentColor" mask="url(#library-icon-right)"/>
+          </g>
+        </svg>
+        <span class="nav-label">کتابخانه</span>
+      </button>
+      <button class="nav-item" data-route="ai">
+        <span class="material-symbols-rounded">neurology</span>
+        <span class="nav-label">دستیار هوشمند</span>
+      </button>
+      <button class="nav-item" data-route="stats">
+        <span class="material-symbols-rounded">insights</span>
+        <span class="nav-label">گزارش‌ها</span>
+      </button>
+      <button class="nav-item" data-route="settings">
+        <span class="material-symbols-rounded">tune</span>
+        <span class="nav-label">تنظیمات</span>
+      </button>
+    </nav>
+
+  </div>
+
+</body>
+</html>

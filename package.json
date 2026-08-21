@@ -1,0 +1,37 @@
+{
+  "name": "personal-learning-os",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "lint": "vite build"
+  },
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.2",
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@capgo/capacitor-navigation-bar": "^8.2.6",
+    "@google/genai": "^2.10.0",
+    "d3": "^7.9.0",
+    "express": "^5.2.1",
+    "jquery": "^4.0.0",
+    "mathjs": "^15.2.0",
+    "mathquill": "^0.10.1-a",
+    "pdfjs-dist": "^6.1.200",
+    "tesseract.js": "^7.0.0",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "@material-symbols/svg-400": "^0.45.8"
+  }
+}

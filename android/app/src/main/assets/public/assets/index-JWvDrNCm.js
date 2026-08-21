@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./web-DQA3BXR1.js","./index-CGUIrPDB.js","./index-CJ76ZqKE.css"])))=>i.map(i=>d[i]);
+import{r as a,_ as e}from"./index-CGUIrPDB.js";var t;(function(r){r.WHITE="#FFFFFF",r.BLACK="#000000",r.TRANSPARENT="transparent"})(t||(t={}));const n=a("NavigationBar",{web:()=>e(()=>import("./web-DQA3BXR1.js"),__vite__mapDeps([0,1,2]),import.meta.url).then(r=>new r.NavigationBarWeb)});export{n as NavigationBar,t as NavigationBarColor};

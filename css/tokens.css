@@ -1,0 +1,313 @@
+/* =========================================================
+   DESIGN TOKENS
+   Palette concept: Calm, refined, and minimal.
+   Soft, paper-like surfaces with subtle shadows and elegant,
+   low-contrast typography.
+   ========================================================= */
+:root {
+  --font-body: 'Lora', 'Vazirmatn', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+  --font-heading: 'Vazirmatn', -apple-system, sans-serif;
+
+  /* Runtime-adjustable knobs */
+  --font-scale: 1;
+  --motion-scale: 1;
+
+  /* Primary Accent: Calm, desaturated indigo */
+  --color-primary: #475569;
+  --color-primary-soft: rgba(71, 85, 105, 0.08);
+  --color-primary-hover: #334155;
+  --text-on-primary: #FFFFFF;
+
+  --color-secondary: #8B5CF6;
+  --color-secondary-soft: rgba(139, 92, 246, 0.08);
+
+  --color-accent: #D97706;
+  --color-accent-soft: rgba(217, 119, 6, 0.08);
+
+  --color-danger: #EF4444;
+  --color-danger-soft: rgba(239, 68, 68, 0.08);
+  --color-warning: #F59E0B;
+  --color-warning-soft: rgba(245, 158, 11, 0.08);
+  --color-success: #10B981;
+  --color-success-soft: rgba(16, 185, 129, 0.08);
+
+  /* Backgrounds: Warm, soft whites */
+  --bg-primary: #FAF9F8;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-sunken: #F3F2F1;
+
+  /* Borders: Barely there, subtle */
+  --border-strong: #E5E5E5;
+  --border-soft: #F0F0F0;
+  --border-subtle: #F8F8F8;
+
+  /* Typography */
+  --text-primary: #27272A;
+  --text-secondary: #71717A;
+  --text-tertiary: #A1A1AA;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-8: 40px;
+  --space-12: 64px;
+
+  /* Radii: Soft and elegant */
+  --radius-btn: 12px;
+  --radius-card: 24px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+
+  /* Typography Scales */
+  --text-caption: calc(13px * var(--font-scale));
+  --text-body: calc(16px * var(--font-scale));
+  --text-section: calc(20px * var(--font-scale));
+  --text-title: calc(28px * var(--font-scale));
+
+  /* Shadows: Deep, diffuse, physical */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
+
+  --lh-normal: 1.6;
+  
+  /* Animations: Smooth, spring-like */
+  --duration-fast: calc(0.2s * var(--motion-scale));
+  --duration-normal: calc(0.4s * var(--motion-scale));
+  --duration-slow: calc(0.6s * var(--motion-scale));
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-entrance: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  
+  --max-content-w: 640px;
+}
+
+[data-theme="dark"] {
+  --color-primary: #94A3B8;
+  --color-primary-soft: rgba(148, 163, 184, 0.12);
+  --color-primary-hover: #CBD5E1;
+  --text-on-primary: #0F172A;
+
+  --color-secondary: #A78BFA;
+  --color-secondary-soft: rgba(167, 139, 250, 0.12);
+
+  --color-accent: #FBBF24;
+  --color-accent-soft: rgba(251, 191, 36, 0.12);
+
+  --color-danger: #F87171;
+  --color-danger-soft: rgba(248, 113, 113, 0.12);
+  --color-warning: #FBBF24;
+  --color-warning-soft: rgba(251, 191, 36, 0.12);
+  --color-success: #34D399;
+  --color-success-soft: rgba(52, 211, 153, 0.12);
+
+  --bg-primary: #121212;
+  --bg-secondary: #1C1C1E;
+  --bg-card: #1C1C1E;
+  --bg-elevated: #2C2C2E;
+  --bg-sunken: #09090A;
+
+  --border-strong: #3F3F46;
+  --border-soft: #27272A;
+  --border-subtle: #18181B;
+
+  --text-primary: #F4F4F5;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Accent presets */
+html.accent-blue {
+  --color-primary: #2563EB;
+  --color-primary-soft: rgba(37, 99, 235, 0.08);
+  --color-primary-hover: #1D4ED8;
+}
+html.accent-blue[data-theme="dark"] {
+  --color-primary: #93C5FD;
+  --color-primary-soft: rgba(147, 197, 253, 0.12);
+  --color-primary-hover: #BFDBFE;
+}
+
+html.accent-violet {
+  --color-primary: #7C3AED;
+  --color-primary-soft: rgba(124, 58, 237, 0.08);
+  --color-primary-hover: #6D28D9;
+}
+html.accent-violet[data-theme="dark"] {
+  --color-primary: #C4B5FD;
+  --color-primary-soft: rgba(196, 181, 253, 0.12);
+  --color-primary-hover: #DDD6FE;
+}
+
+html.accent-teal {
+  --color-primary: #0D9488;
+  --color-primary-soft: rgba(13, 148, 136, 0.08);
+  --color-primary-hover: #0F766E;
+}
+html.accent-teal[data-theme="dark"] {
+  --color-primary: #5EEAD4;
+  --color-primary-soft: rgba(94, 234, 212, 0.12);
+  --color-primary-hover: #99F6E4;
+}
+
+html.accent-amber {
+  --color-primary: #D97706;
+  --color-primary-soft: rgba(217, 119, 6, 0.08);
+  --color-primary-hover: #B45309;
+}
+html.accent-amber[data-theme="dark"] {
+  --color-primary: #FCD34D;
+  --color-primary-soft: rgba(252, 211, 77, 0.12);
+  --color-primary-hover: #FDE68A;
+}
+
+html.accent-rose {
+  --color-primary: #E11D48;
+  --color-primary-soft: rgba(225, 29, 72, 0.08);
+  --color-primary-hover: #BE123C;
+}
+html.accent-rose[data-theme="dark"] {
+  --color-primary: #FDA4AF;
+  --color-primary-soft: rgba(253, 164, 175, 0.12);
+  --color-primary-hover: #FECDD3;
+}
+
+html.accent-slate {
+  --color-primary: #475569;
+  --color-primary-soft: rgba(71, 85, 105, 0.08);
+  --color-primary-hover: #334155;
+}
+html.accent-slate[data-theme="dark"] {
+  --color-primary: #94A3B8;
+  --color-primary-soft: rgba(148, 163, 184, 0.12);
+  --color-primary-hover: #CBD5E1;
+}
+
+/* Font-size scale */
+html.font-scale-sm { --font-scale: 0.95; }
+html.font-scale-md { --font-scale: 1; }
+html.font-scale-lg { --font-scale: 1.1; }
+
+/* Reduced motion */
+html.reduce-motion { --motion-scale: 0.01; }
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-force-on) { --motion-scale: 0.01; }
+}
+
+/* High Contrast Modes */
+[data-contrast="high-contrast-light"] {
+  --color-primary: #444444 !important;
+  --color-primary-soft: rgba(0, 0, 0, 0.06) !important;
+  --color-primary-hover: #222222 !important;
+  --text-on-primary: #FFFFFF !important;
+  
+  --color-secondary: #555555 !important;
+  --color-secondary-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-accent: #666666 !important;
+  --color-accent-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-danger: #555555 !important;
+  --color-danger-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-warning: #666666 !important;
+  --color-warning-soft: rgba(0, 0, 0, 0.04) !important;
+  
+  --color-success: #444444 !important;
+  --color-success-soft: rgba(0, 0, 0, 0.04) !important;
+
+  --bg-primary: #EAEAEA !important; 
+  --bg-secondary: transparent !important;
+  --bg-card: rgba(255, 255, 255, 0.6) !important; 
+  --bg-elevated: #FFFFFF !important;
+  --bg-sunken: #D8D8D8 !important;
+  
+  --border-strong: rgba(0, 0, 0, 0.15) !important;
+  --border-soft: rgba(0, 0, 0, 0.08) !important;
+  --border-subtle: rgba(0, 0, 0, 0.04) !important;
+  
+  --text-primary: #111111 !important;
+  --text-secondary: #444444 !important;
+  --text-tertiary: #777777 !important;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-contrast="high-contrast-light"] body {
+  background-color: #EAEAEA !important;
+  background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.08"/%3E%3C/svg%3E') !important;
+  background-attachment: fixed !important;
+}
+
+[data-contrast="high-contrast-light"] .topbar,
+[data-contrast="high-contrast-light"] .bottom-nav {
+  background-color: rgba(234, 234, 234, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-contrast="high-contrast-dark"] {
+  --color-primary: #BBBBBB !important;
+  --color-primary-soft: rgba(255, 255, 255, 0.1) !important;
+  --color-primary-hover: #DDDDDD !important;
+  --text-on-primary: #000000 !important;
+  
+  --color-secondary: #AAAAAA !important;
+  --color-secondary-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-accent: #999999 !important;
+  --color-accent-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-danger: #AAAAAA !important;
+  --color-danger-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-warning: #999999 !important;
+  --color-warning-soft: rgba(255, 255, 255, 0.08) !important;
+  
+  --color-success: #BBBBBB !important;
+  --color-success-soft: rgba(255, 255, 255, 0.08) !important;
+
+  --bg-primary: #1A1A1A !important; 
+  --bg-secondary: transparent !important;
+  --bg-card: rgba(255, 255, 255, 0.05) !important; 
+  --bg-elevated: #2A2A2A !important;
+  --bg-sunken: #0D0D0D !important;
+  
+  --border-strong: rgba(255, 255, 255, 0.15) !important;
+  --border-soft: rgba(255, 255, 255, 0.08) !important;
+  --border-subtle: rgba(255, 255, 255, 0.04) !important;
+  
+  --text-primary: #EEEEEE !important;
+  --text-secondary: #BBBBBB !important;
+  --text-tertiary: #888888 !important;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-contrast="high-contrast-dark"] body {
+  background-color: #1A1A1A !important;
+  background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.08"/%3E%3C/svg%3E') !important;
+  background-attachment: fixed !important;
+}
+
+[data-contrast="high-contrast-dark"] .topbar,
+[data-contrast="high-contrast-dark"] .bottom-nav {
+  background-color: rgba(26, 26, 26, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
