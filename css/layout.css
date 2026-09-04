@@ -1,0 +1,248 @@
+/* Layout structures */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  /* A single, very subtle tone (not a rainbow of blooms) — just enough
+     depth for the frosted-glass surfaces to feel like glass, without
+     reading as playful or colorful. Professional apps keep this kind
+     of wash nearly invisible. */
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(900px circle at 50% -10%, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent 55%);
+  transition: background-color var(--duration-normal) var(--ease-standard);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  /* Grid (not flex + space-between) so the title sits truly centered on
+     the bar itself, regardless of how many icon buttons happen to be
+     visible on each side (e.g. 1 on the leading side vs 2-3 on the
+     actions side) — with flex + space-between the title would drift
+     toward whichever side has fewer buttons. */
+  display: grid;
+  grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+  align-items: center;
+  height: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--space-4) 0;
+  background-color: color-mix(in srgb, var(--bg-primary) 62%, transparent);
+  backdrop-filter: blur(28px) saturate(1.05);
+  -webkit-backdrop-filter: blur(28px) saturate(1.05);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+  /* Faint top-edge highlight — the light-catching rim that sells "glass" */
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
+  z-index: 100;
+  transition: background-color var(--duration-normal) var(--ease-standard);
+}
+.topbar-leading {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--space-1);
+}
+.topbar-actions {
+  justify-self: end;
+}
+.topbar-title {
+  grid-column: 2;
+  justify-self: center;
+  max-width: 60vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 600;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  text-align: center;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+
+.page-content {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6) var(--space-4);
+  padding-bottom: calc(100px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); /* generous space for bottom nav */
+  /* Slightly translucent so the ambient blooms on .app whisper through
+     at the edges, while staying opaque enough for comfortable reading. */
+  background-color: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior-y: contain; /* stop the browser "rubber-band" bounce — reads as a web page, not an app */
+  transition: background-color var(--duration-normal) var(--ease-standard);
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: calc(68px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding: 0 var(--space-3);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  background-color: color-mix(in srgb, var(--bg-primary) 66%, transparent);
+  backdrop-filter: blur(28px) saturate(1.05);
+  -webkit-backdrop-filter: blur(28px) saturate(1.05);
+  border-top: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.03),
+              inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
+  z-index: 100;
+  transition: background-color var(--duration-normal) var(--ease-standard);
+  overflow: visible;
+}
+
+/* Expanding pill tab — inactive = icon only; active = icon + label */
+.nav-item {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex: 0 0 auto;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  background: color-mix(in srgb, var(--border-soft) 55%, transparent);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  transition:
+    background-color 0.4s var(--ease-standard),
+    color 0.35s ease,
+    padding 0.55s cubic-bezier(0.34, 1.15, 0.64, 1),
+    gap 0.55s cubic-bezier(0.34, 1.15, 0.64, 1),
+    box-shadow 0.4s ease,
+    transform 0.2s ease;
+}
+.nav-item:active {
+  transform: scale(0.94);
+}
+
+.nav-item .material-symbols-rounded,
+.nav-item > svg {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  transition: font-variation-settings 0.3s ease, color 0.3s ease;
+}
+
+/* Label collapses when inactive, expands when active */
+.nav-label {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(4px);
+  transition:
+    max-width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s ease 0.08s,
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-item.active {
+  color: #fff;
+  background: var(--color-primary);
+  gap: 8px;
+  padding: 0 16px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.nav-item.active .material-symbols-rounded {
+  font-variation-settings: 'FILL' 1;
+}
+
+.nav-item.active .nav-label {
+  max-width: 9.5em;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--text-primary);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+.icon-btn:hover {
+  background-color: var(--border-soft);
+}
+.icon-btn:active {
+  transform: scale(0.88);
+  background-color: var(--border-soft);
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-primary);
+  z-index: 10000;
+  gap: var(--space-3);
+  transition: opacity var(--duration-slow) var(--ease-exit);
+}
+/* Override the generic instant .hidden (display:none) just for the splash,
+   so closing it is a smooth fade instead of an abrupt cut — the splash
+   stays laid out but invisible and untappable while it fades away. */
+#splash.hidden {
+  display: flex !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.splash-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  animation: splashLogoIn 0.7s var(--ease-entrance) both,
+             splashLogoPulse 2.2s ease-in-out 0.7s infinite;
+}
+@keyframes splashLogoIn {
+  from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes splashLogoPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+.splash-title {
+  font-size: var(--text-section);
+  font-weight: 800;
+  color: var(--text-primary);
+}

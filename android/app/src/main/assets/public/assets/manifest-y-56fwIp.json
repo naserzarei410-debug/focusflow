@@ -1,0 +1,19 @@
+{
+  "name": "سیستم یادگیری شخصی",
+  "short_name": "Learning OS",
+  "description": "اپلیکیشن یادگیری آفلاین‌محور با فلش‌کارت، تمرین هوشمند و آزمون",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#2F5FA8",
+  "dir": "rtl",
+  "lang": "fa",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

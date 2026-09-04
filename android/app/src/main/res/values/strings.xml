@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FocusFlow</string>
+    <string name="title_activity_main">FocusFlow</string>
+    <string name="package_name">com.focusflow.app</string>
+    <string name="custom_url_scheme">com.focusflow.app</string>
+    <string name="widget_two_minute_title">۲ دقیقه مرور</string>
+    <string name="widget_two_minute_subtitle">۵ کارت — بزن بریم</string>
+    <string name="widget_two_minute_description">میانبر شروع یک مرور سریع و کوتاه (۵ کارت)</string>
+    <string name="widget_status_title">وضعیت\nامروز</string>
+    <string name="widget_status_goal_label">هدف روزانه</string>
+    <string name="widget_status_due_label">آمادهٔ مرور</string>
+    <string name="widget_status_streak_label">روز پیاپی</string>
+    <string name="widget_status_description">نمایش هدف روزانه، کارت‌های آمادهٔ مرور و روزهای پیاپی مطالعه</string>
+</resources>

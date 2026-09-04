@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the app's CSS tokens (css/tokens.css) -->
+    <color name="widget_background_color">#475569</color>
+    <color name="widget_background_dark">#1E293B</color>
+    <color name="widget_background_card">#F8FAFC</color>
+    <color name="widget_text_on_primary">#FFFFFF</color>
+    <color name="widget_text_primary">#0F172A</color>
+    <color name="widget_text_secondary">#64748B</color>
+    <color name="widget_accent">#D97706</color>
+    <color name="widget_bar_1">#334155</color>
+    <color name="widget_bar_2">#475569</color>
+    <color name="widget_bar_3">#64748B</color>
+    <color name="widget_circle">#1E3A5F</color>
+    <color name="widget_stroke">#E2E8F0</color>
+</resources>

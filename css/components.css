@@ -1,0 +1,656 @@
+/* =========================================================
+   COMPONENTS
+   ========================================================= */
+
+/* =========================================================
+   TAP RIPPLE — a soft radial "glow" burst from the center of any
+   interactive control on press, layered underneath its icon/label via
+   a ::after pseudo-element so it never touches (or clips) box-shadow,
+   background-image, or existing :active transforms/scale on the base
+   element. Confined to the element's own rounded shape automatically
+   (backgrounds never paint past their own border box), so no
+   overflow:hidden is needed and nothing else can get visually clipped.
+   ========================================================= */
+.btn,
+.icon-btn,
+.nav-item,
+.tappable,
+.card-interactive,
+.fab {
+  position: relative;
+}
+.btn::after,
+.icon-btn::after,
+.nav-item::after,
+.tappable::after,
+.card-interactive::after,
+.fab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, color-mix(in srgb, currentColor 14%, transparent) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.45s var(--ease-standard), transform 0.45s var(--ease-standard);
+  pointer-events: none;
+}
+.btn:active::after,
+.icon-btn:active::after,
+.nav-item:active::after,
+.tappable:active::after,
+.card-interactive:active::after,
+.fab:active::after {
+  opacity: 0.65;
+  transform: scale(1);
+  transition: opacity 0.05s linear, transform 0.05s linear;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 48px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-btn);
+  font-size: var(--text-body);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
+  cursor: pointer;
+}
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-primary) 12%, transparent),
+              0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 80%, transparent);
+}
+.btn-primary:not(:disabled):hover { 
+  background: var(--color-primary-hover); 
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--color-primary) 16%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.btn-primary:not(:disabled):active {
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.btn-primary:disabled { box-shadow: none; }
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.btn-secondary:not(:disabled):hover { 
+  border-color: var(--text-tertiary);
+  background: var(--bg-sunken);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+.btn-danger:not(:disabled):hover { filter: brightness(0.92); }
+
+.btn-text,
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-btn);
+}
+.btn-text:not(:disabled):hover,
+.btn-ghost:not(:disabled):hover { 
+  color: var(--text-primary); 
+  background: var(--bg-sunken);
+}
+
+.btn-icon-inline {
+  font-size: 20px;
+  vertical-align: middle;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-4);
+  min-height: 60vh;
+}
+.empty-state-icon {
+  width: 96px; height: 96px;
+  border-radius: 48px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: var(--space-2);
+}
+.empty-state-icon .material-symbols-rounded { font-size: 48px; font-weight: 300; }
+.empty-state-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-section);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.empty-state-desc {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  max-width: 300px;
+  line-height: var(--lh-normal);
+}
+
+.page-fade {
+  animation: pageFadeIn var(--duration-slow) var(--ease-entrance) forwards;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Push/pop entrance for drilling into a detail page (category, study,
+   practice, exam, search, pomodoro, calculator) vs. returning from one.
+   The app is RTL and its back arrow points right, so "deeper" content
+   arrives from the left (push) and "back" content arrives from the
+   right (pop) — matching the direction the back arrow itself implies. */
+.page-push-in {
+  animation: pagePushIn var(--duration-slow) var(--ease-entrance) forwards;
+}
+.page-pop-in {
+  animation: pagePopIn var(--duration-slow) var(--ease-entrance) forwards;
+}
+@keyframes pagePushIn {
+  from { opacity: 0; transform: translateX(-28px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pagePopIn {
+  from { opacity: 0; transform: translateX(28px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Staggered entrance for the cards/rows of a freshly-rendered page — each
+   one arrives a beat after the last instead of all popping in at once.
+   Scoped to #page-content only, so dialogs/sheets/nav (which have their
+   own entrance animations) are untouched. Covers the first 10 items;
+   anything past that simply uses the 10th item's delay. */
+#page-content.page-fade .card,      #page-content.page-fade .ds-card,
+#page-content.page-push-in .card,   #page-content.page-push-in .ds-card,
+#page-content.page-pop-in .card,    #page-content.page-pop-in .ds-card {
+  animation: cardEnter var(--duration-slow) var(--ease-entrance) both;
+}
+#page-content.page-fade .card:nth-child(1),  #page-content.page-fade .ds-card:nth-child(1),
+#page-content.page-push-in .card:nth-child(1),  #page-content.page-push-in .ds-card:nth-child(1),
+#page-content.page-pop-in .card:nth-child(1),  #page-content.page-pop-in .ds-card:nth-child(1)  { animation-delay: 0.02s; }
+#page-content.page-fade .card:nth-child(2),  #page-content.page-fade .ds-card:nth-child(2),
+#page-content.page-push-in .card:nth-child(2),  #page-content.page-push-in .ds-card:nth-child(2),
+#page-content.page-pop-in .card:nth-child(2),  #page-content.page-pop-in .ds-card:nth-child(2)  { animation-delay: 0.06s; }
+#page-content.page-fade .card:nth-child(3),  #page-content.page-fade .ds-card:nth-child(3),
+#page-content.page-push-in .card:nth-child(3),  #page-content.page-push-in .ds-card:nth-child(3),
+#page-content.page-pop-in .card:nth-child(3),  #page-content.page-pop-in .ds-card:nth-child(3)  { animation-delay: 0.10s; }
+#page-content.page-fade .card:nth-child(4),  #page-content.page-fade .ds-card:nth-child(4),
+#page-content.page-push-in .card:nth-child(4),  #page-content.page-push-in .ds-card:nth-child(4),
+#page-content.page-pop-in .card:nth-child(4),  #page-content.page-pop-in .ds-card:nth-child(4)  { animation-delay: 0.14s; }
+#page-content.page-fade .card:nth-child(5),  #page-content.page-fade .ds-card:nth-child(5),
+#page-content.page-push-in .card:nth-child(5),  #page-content.page-push-in .ds-card:nth-child(5),
+#page-content.page-pop-in .card:nth-child(5),  #page-content.page-pop-in .ds-card:nth-child(5)  { animation-delay: 0.18s; }
+#page-content.page-fade .card:nth-child(6),  #page-content.page-fade .ds-card:nth-child(6),
+#page-content.page-push-in .card:nth-child(6),  #page-content.page-push-in .ds-card:nth-child(6),
+#page-content.page-pop-in .card:nth-child(6),  #page-content.page-pop-in .ds-card:nth-child(6)  { animation-delay: 0.22s; }
+#page-content.page-fade .card:nth-child(7),  #page-content.page-fade .ds-card:nth-child(7),
+#page-content.page-push-in .card:nth-child(7),  #page-content.page-push-in .ds-card:nth-child(7),
+#page-content.page-pop-in .card:nth-child(7),  #page-content.page-pop-in .ds-card:nth-child(7)  { animation-delay: 0.26s; }
+#page-content.page-fade .card:nth-child(8),  #page-content.page-fade .ds-card:nth-child(8),
+#page-content.page-push-in .card:nth-child(8),  #page-content.page-push-in .ds-card:nth-child(8),
+#page-content.page-pop-in .card:nth-child(8),  #page-content.page-pop-in .ds-card:nth-child(8)  { animation-delay: 0.30s; }
+#page-content.page-fade .card:nth-child(9),  #page-content.page-fade .ds-card:nth-child(9),
+#page-content.page-push-in .card:nth-child(9),  #page-content.page-push-in .ds-card:nth-child(9),
+#page-content.page-pop-in .card:nth-child(9),  #page-content.page-pop-in .ds-card:nth-child(9)  { animation-delay: 0.34s; }
+#page-content.page-fade .card:nth-child(n+10),  #page-content.page-fade .ds-card:nth-child(n+10),
+#page-content.page-push-in .card:nth-child(n+10),  #page-content.page-push-in .ds-card:nth-child(n+10),
+#page-content.page-pop-in .card:nth-child(n+10),  #page-content.page-pop-in .ds-card:nth-child(n+10) { animation-delay: 0.38s; }
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes flamePulse {
+  0% { transform: scale(1.0); }
+  50% { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1.0); }
+}
+
+/* Floating Action Button (FAB) */
+.fab {
+  position: fixed;
+  bottom: calc(88px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  right: var(--space-4);
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, var(--border-soft) 50%, transparent);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 99;
+  transition: transform var(--duration-fast) var(--ease-standard), 
+              background-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
+}
+.fab:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.fab:active {
+  transform: scale(0.92);
+}
+.fab .material-symbols-rounded {
+  font-size: 28px;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* =========================================================
+   3D FLIP CARD & STUDY DRAWER STYLES
+   ========================================================= */
+
+.flip-card {
+  perspective: 1500px;
+  background-color: transparent;
+  cursor: pointer;
+  width: 100%;
+  height: 320px;
+  /* Allows a slightly taller card for long pasted content instead of a
+     hard cutoff; the face itself still scrolls internally beyond this
+     via .fc-face-scroll below. */
+  max-height: 46vh;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform var(--duration-slow) var(--ease-standard);
+  transform-style: preserve-3d;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: var(--radius-card);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+}
+
+.fc-face-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  box-sizing: border-box;
+}
+
+/* Prevent hidden face from intercepting clicks/pointer events */
+.flip-card:not(.flipped) .flip-face-back {
+  pointer-events: none !important;
+  user-select: none;
+}
+
+.flip-card.flipped .flip-face:not(.flip-face-back) {
+  pointer-events: none !important;
+  user-select: none;
+}
+
+.flip-face-back {
+  transform: rotateY(180deg);
+}
+
+.fc-face-image {
+  max-width: 100%;
+  max-height: 45%;
+  object-fit: contain;
+  border-radius: var(--radius-input);
+}
+.fc-face-text {
+  color: var(--text-primary);
+  word-break: break-word;
+  font-size: var(--text-section);
+  text-align: center;
+}
+.fc-flip-hint {
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  margin-top: var(--space-4);
+  opacity: 0.6;
+}
+
+/* Drawer slide up animation */
+@keyframes drawerSlideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.drawer-slide-up {
+  animation: drawerSlideUp var(--duration-normal) var(--ease-entrance) forwards;
+}
+
+/* =========================================================
+   FLASHCARD LIST ROWS (Category workspace)
+   ========================================================= */
+
+.fc-stats-row {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.fc-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-input);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.fc-item:active {
+  background-color: var(--bg-sunken);
+}
+
+.fc-item-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--bg-sunken);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border-soft);
+}
+.fc-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.category-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fc-item-title {
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-meta {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-image-picker-preview {
+  display: flex;
+}
+.fc-image-box {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+.fc-image-box img {
+  width: 100%;
+  display: block;
+}
+.fc-image-remove {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  border-radius: 16px;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+.fc-image-remove:active {
+  transform: scale(0.9);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 4px;
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* =========================================================
+   RICH TEXT (AI responses / Markdown + KaTeX)
+   ========================================================= */
+
+/* Inline code */
+.rich-text code,
+.katex-inline-wrapper + code,
+span > code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.9em;
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  border: 1px solid var(--border-soft);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Fenced code blocks */
+.rich-text pre,
+pre {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.88em;
+  line-height: 1.55;
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  overflow-x: auto;
+  margin: 10px 0;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+  white-space: pre;
+}
+.rich-text pre code,
+pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Headings inside AI bubbles */
+.rich-text h2,
+.rich-text h3,
+.rich-text h4 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0.7em 0 0.35em;
+}
+.rich-text h2 { font-size: 1.22em; }
+.rich-text h3 { font-size: 1.12em; }
+.rich-text h4 { font-size: 1.05em; }
+
+/* Lists */
+.rich-text ul,
+.rich-text ol {
+  margin: 8px 0;
+  padding-inline-start: 1.4em;
+  padding-inline-end: 0;
+}
+.rich-text li {
+  margin: 3px 0;
+  line-height: 1.65;
+}
+
+/* Blockquote */
+.rich-text blockquote {
+  margin: 10px 0;
+  padding: 8px 14px;
+  border-inline-start: 3px solid var(--color-primary);
+  background: var(--color-primary-soft);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-secondary);
+}
+[dir="rtl"] .rich-text blockquote {
+  border-radius: 8px 0 0 8px;
+}
+
+/* Links */
+.rich-text a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Strong / emphasis – inherit color, just weight/style */
+.rich-text strong { font-weight: 700; color: var(--text-primary); }
+.rich-text em { font-style: italic; }
+
+/* KaTeX integration */
+.katex-display-wrapper {
+  text-align: center;
+  margin: 12px 0;
+  direction: ltr;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  /* Vertical padding (not overflow-y:hidden) absorbs the same KaTeX
+     sub-pixel rounding slack described on .katex-inline-wrapper above —
+     hidden would silently clip the top/bottom of tall content (radicals,
+     fractions, tall digits) instead of just giving it room to fit. */
+  padding: 6px 0;
+}
+.katex-inline-wrapper {
+  direction: ltr;
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: middle;
+  -webkit-overflow-scrolling: touch;
+  /* KaTeX renders its glyphs as many nested spans with sub-pixel (em-based)
+     widths/heights; the browser can round those a pixel or two differently
+     than it rounds the outer box's own auto width/height. That mismatch —
+     not a genuinely-too-long formula — is what was showing a spurious
+     scrollbar (horizontal for short answers like "24", vertical for
+     radicals like "√x" whose root sign sits slightly above the box).
+     This padding absorbs that rounding slack on all four sides so short
+     formulas render with no scrollbar at all; a formula that's genuinely
+     too wide for its line still scrolls horizontally as intended. The
+     horizontal negative margin cancels the left/right padding visually
+     so words around the formula don't drift apart; vertical padding is
+     left as real extra breathing room, which reads as normal spacing
+     around inline math rather than a bug. */
+  padding: 5px 6px;
+  margin: 0 -6px;
+}
+
+/* Make KaTeX respect theme colors */
+.katex {
+  font-size: 1.08em;
+  color: var(--text-primary);
+}
+.katex-display {
+  margin: 0.4em 0;
+}
+/* Slightly larger display math on wider screens */
+@media (min-width: 480px) {
+  .katex-display-wrapper .katex { font-size: 1.15em; }
+}
+
+/* Error / fallback appearance for failed math */
+.katex-error,
+code[style*="white-space:pre-wrap"] {
+  color: var(--color-danger) !important;
+  background: var(--color-danger-soft);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
